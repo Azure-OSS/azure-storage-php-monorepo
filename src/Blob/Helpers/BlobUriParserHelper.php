@@ -16,7 +16,7 @@ final class BlobUriParserHelper
     {
         $segments = self::getPathSegments($uri);
 
-        if (self::isDevelopmentUri($uri)) {
+        if (self::isDevelopmentUri($uri) && count($segments) > 1) {
             array_shift($segments);
         }
 
@@ -31,7 +31,7 @@ final class BlobUriParserHelper
     {
         $segments = self::getPathSegments($uri);
 
-        if (self::isDevelopmentUri($uri)) {
+        if (self::isDevelopmentUri($uri) && count($segments) > 2) {
             array_shift($segments);
         }
 
