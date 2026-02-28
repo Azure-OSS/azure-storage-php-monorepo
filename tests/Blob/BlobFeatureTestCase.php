@@ -12,6 +12,8 @@ abstract class BlobFeatureTestCase extends TestCase
 {
     protected BlobServiceClient $serviceClient;
 
+    protected ?BlobServiceClient $secondaryServiceClient = null;
+
     protected function setUp(): void
     {
         $connectionString = getenv('AZURE_STORAGE_CONNECTION_STRING');
@@ -21,6 +23,23 @@ abstract class BlobFeatureTestCase extends TestCase
         }
 
         $this->serviceClient = BlobServiceClient::fromConnectionString($connectionString);
+
+        $secondaryConnectionString = getenv('AZURE_STORAGE_CONNECTION_STRING_SECONDARY');
+        if (is_string($secondaryConnectionString) && $secondaryConnectionString !== '') {
+            $this->secondaryServiceClient = BlobServiceClient::fromConnectionString($secondaryConnectionString);
+        }
+    }
+
+    protected function hasSecondaryStorageAccount(): bool
+    {
+        return $this->secondaryServiceClient !== null;
+    }
+
+    protected function requireSecondaryStorageAccount(): void
+    {
+        if (! $this->hasSecondaryStorageAccount()) {
+            self::markTestSkipped('Secondary storage account required. Please set AZURE_STORAGE_CONNECTION_STRING_SECONDARY environment variable.');
+        }
     }
 
     protected function randomContainerName(): string
