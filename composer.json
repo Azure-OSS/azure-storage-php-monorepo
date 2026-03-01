@@ -51,5 +51,10 @@
     "allow-plugins": {
       "phpstan/extension-installer": true
     }
+  },
+  "scripts": {
+    "sync-packages": [
+      "@php .github/sync-package.php"
+    ]
   }
 }
