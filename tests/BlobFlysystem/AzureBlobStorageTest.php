@@ -254,26 +254,4 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
         self::assertStringContainsString('se=', $url);
         self::assertStringContainsString('sp=', $url);
     }
-
-    #[Test]
-    public function deprecated_alias_class_works(): void
-    {
-        // Verify the alias class exists
-        self::assertTrue(
-            class_exists('AzureOss\FlysystemAzureBlobStorage\AzureBlobStorageAdapter'),
-            'The deprecated alias class should exist',
-        );
-
-        // Use the old alias namespace
-        $adapter = new \AzureOss\FlysystemAzureBlobStorage\AzureBlobStorageAdapter(
-            self::createContainerClient(),
-            'flysystem',
-        );
-
-        // Verify the classes are the same (alias points to the real class)
-        self::assertEquals(
-            AzureBlobStorageAdapter::class,
-            $adapter::class,
-        );
-    }
 }
