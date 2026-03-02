@@ -9,7 +9,7 @@
       "AzureOss\\Storage\\": "src/"
     },
     "files": [
-      "src/aliases.php"
+      "src/BlobFlysystem/aliases.php"
     ]
   },
   "autoload-dev": {
