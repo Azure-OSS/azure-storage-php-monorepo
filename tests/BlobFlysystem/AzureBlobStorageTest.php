@@ -167,6 +167,24 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
     }
 
     #[Test]
+    public function it_can_set_cache_control_on_upload_via_http_headers_config(): void
+    {
+        $adapter = $this->adapter();
+
+        $adapter->write('cache-control.txt', 'content', new Config([
+            'httpHeaders' => [
+                'cacheControl' => 'public, max-age=31536000',
+            ],
+        ]));
+
+        $properties = self::createContainerClient()
+            ->getBlobClient('flysystem/cache-control.txt')
+            ->getProperties();
+
+        self::assertSame('public, max-age=31536000', $properties->cacheControl);
+    }
+
+    #[Test]
     public function setting_visibility_can_be_ignored_not_supported(): void
     {
         $this->givenWeHaveAnExistingFile('some-file.md');

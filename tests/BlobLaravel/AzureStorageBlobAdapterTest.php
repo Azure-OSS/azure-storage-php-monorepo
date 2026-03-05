@@ -159,6 +159,14 @@ class AzureStorageBlobAdapterTest extends TestCase
         self::assertTrue($driver->exists('file.txt'));
         self::assertEquals('content', $driver->get('file.txt'));
 
+        $driver->put('cache-control.txt', 'content', [
+            'httpHeaders' => [
+                'cacheControl' => 'public, max-age=31536000',
+            ],
+        ]);
+        $properties = $containerClient->getBlobClient('cache-control.txt')->getProperties();
+        self::assertSame('public, max-age=31536000', $properties->cacheControl);
+
         /** @phpstan-ignore-next-line */
         $temporaryUrl = $driver->temporaryUrl('file.txt', now()->addMinute());
         self::assertIsString($temporaryUrl);
@@ -193,7 +201,7 @@ class AzureStorageBlobAdapterTest extends TestCase
         self::assertTrue($driver->exists('temp-upload-test.txt'));
         self::assertEquals($content, $driver->get('temp-upload-test.txt'));
 
-        self::assertCount(3, $driver->allFiles());
+        self::assertCount(4, $driver->allFiles());
         $driver->deleteDirectory('');
         self::assertCount(0, $driver->allFiles());
     }
