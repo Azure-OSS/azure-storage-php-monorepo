@@ -1,0 +1,20 @@
+{
+  "name": "azure-oss/storage-common",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "AzureOss\\Storage\\Common\\": ""
+    }
+  },
+  "authors": [
+    {
+      "name": "Brecht Vermeersch",
+      "email": "brechtvermeersch@outlook.be"
+    }
+  ],
+  "require": {
+    "php": "^8.1",
+    "guzzlehttp/guzzle": "^7.8"
+  }
+}
