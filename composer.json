@@ -9,6 +9,7 @@
       "AzureOss\\Storage\\": "src/"
     },
     "files": [
+      "src/Blob/aliases.php",
       "src/BlobFlysystem/aliases.php"
     ]
   },
