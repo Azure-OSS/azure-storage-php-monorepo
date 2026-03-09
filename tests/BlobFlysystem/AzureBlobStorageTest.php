@@ -50,7 +50,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$containerName = 'flysystem-' . bin2hex(random_bytes(8));
+        self::$containerName = 'flysystem-'.bin2hex(random_bytes(8));
         self::createContainerClient()->create();
     }
 
@@ -188,7 +188,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
         ]));
 
         $properties = self::createContainerClient()
-            ->getBlobClient(self::$containerName . '/cache-control.txt')
+            ->getBlobClient(self::$containerName.'/cache-control.txt')
             ->getProperties();
 
         self::assertSame('public, max-age=31536000', $properties->cacheControl);

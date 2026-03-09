@@ -15,8 +15,6 @@ trait CreatesTempFiles
 
     /**
      * Creates a temporary file and returns a readable stream.
-     *
-     * @return resource
      */
     protected function tempFile(int $sizeInBytes): StreamInterface
     {
@@ -29,6 +27,11 @@ trait CreatesTempFiles
         $this->tempFiles[] = $path;
 
         $handle = fopen($path, 'wb');
+
+        if ($handle === false) {
+            throw new \RuntimeException("Failed to open temporary file for writing: {$path}");
+        }
+
         $chunkSize = 8192;
         $written = 0;
 

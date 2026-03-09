@@ -55,6 +55,9 @@ trait CreatesTempContainers
         $this->tempContainers = [];
     }
 
+    /**
+     * @return array<string, string>
+     */
     private static function envMap(): array
     {
         return [
