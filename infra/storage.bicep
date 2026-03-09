@@ -1,6 +1,3 @@
-// storage.bicep
-// Deployed at resource-group scope (default)
-
 @description('Azure region for all resources')
 param location string
 
@@ -68,19 +65,6 @@ resource storageAccounts 'Microsoft.Storage/storageAccounts@2023-01-01' = [
       minimumTlsVersion: 'TLS1_2'
       allowBlobPublicAccess: config.allowPublicAccess
       allowSharedKeyAccess: true
-      encryption: {
-        services: {
-          blob: {
-            keyType: 'Account'
-            enabled: true
-          }
-          file: {
-            keyType: 'Account'
-            enabled: true
-          }
-        }
-        keySource: 'Microsoft.Storage'
-      }
       networkAcls: {
         bypass: 'AzureServices'
         defaultAction: 'Allow'
@@ -99,11 +83,11 @@ resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01
     properties: {
       deleteRetentionPolicy: {
         enabled: config.softDeleteEnabled
-        days: config.softDeleteEnabled ? 30 : 1
+        days: 1
       }
       containerDeleteRetentionPolicy: {
         enabled: config.softDeleteEnabled
-        days: config.softDeleteEnabled ? 30 : 1
+        days: 1
       }
       isVersioningEnabled: config.versioningEnabled
     }
