@@ -20,7 +20,7 @@ use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Sas\SasIpRange;
-use AzureOss\Storage\Tests\Blob\CreatesTempContainers;
+use AzureOss\Storage\Tests\CreatesTempContainers;
 use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

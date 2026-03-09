@@ -7,7 +7,7 @@ namespace AzureOss\Storage\Tests\Blob\Feature;
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
-use AzureOss\Storage\Tests\Blob\CreatesTempFiles;
+use AzureOss\Storage\Tests\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Uri;

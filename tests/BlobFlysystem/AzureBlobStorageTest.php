@@ -16,7 +16,12 @@ use PHPUnit\Framework\Attributes\Test;
 
 class AzureBlobStorageTest extends FilesystemAdapterTestCase
 {
-    public const CONTAINER_NAME = 'flysystem';
+    private static string $containerName;
+
+    protected function runScenario(callable $scenario): void
+    {
+        $scenario(); // disable retries
+    }
 
     protected static function createFilesystemAdapter(): FilesystemAdapter
     {
@@ -28,7 +33,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
 
         return new AzureBlobStorageAdapter(
             self::createContainerClient(),
-            'flysystem',
+            self::$containerName,
         );
     }
 
@@ -40,13 +45,18 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
             self::markTestSkipped('AZURE_STORAGE_CONNECTION_STRING is not provided.');
         }
 
-        return BlobServiceClient::fromConnectionString($connectionString)->getContainerClient('flysystem');
+        return BlobServiceClient::fromConnectionString($connectionString)->getContainerClient(self::$containerName);
     }
 
     public static function setUpBeforeClass(): void
     {
-        self::createContainerClient()->deleteIfExists();
+        self::$containerName = 'flysystem-' . bin2hex(random_bytes(8));
         self::createContainerClient()->create();
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        self::createContainerClient()->delete();
     }
 
     public function overwriting_a_file(): void
@@ -178,7 +188,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
         ]));
 
         $properties = self::createContainerClient()
-            ->getBlobClient('flysystem/cache-control.txt')
+            ->getBlobClient(self::$containerName . '/cache-control.txt')
             ->getProperties();
 
         self::assertSame('public, max-age=31536000', $properties->cacheControl);
@@ -239,7 +249,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
 
         $adapter = new AzureBlobStorageAdapter(
             self::createContainerClient(),
-            'flysystem',
+            self::$containerName,
             isPublicContainer: true,
         );
 
@@ -251,7 +261,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
         self::assertStringNotContainsString('sp=', $url);
 
         // But should contain the container and blob name
-        self::assertStringContainsString('flysystem', $url);
+        self::assertStringContainsString(self::$containerName, $url);
         self::assertStringContainsString('test-file.txt', $url);
     }
 
@@ -262,7 +272,7 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
 
         $adapter = new AzureBlobStorageAdapter(
             self::createContainerClient(),
-            'flysystem',
+            self::$containerName,
         );
 
         $url = $adapter->publicUrl('test-file.txt', new Config);
