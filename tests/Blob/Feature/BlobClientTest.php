@@ -318,7 +318,7 @@ final class BlobClientTest extends TestCase
     }
 
     #[Test]
-    public function sync_copy_from_url_works(): void
+    public function sync_copy_from_url_works_with_sas(): void
     {
         $sourceContainer = $this->tempContainer();
         $targetContainer = $this->tempContainer();
@@ -333,6 +333,26 @@ final class BlobClientTest extends TestCase
 
         $targetBlobClient = $targetContainer->getBlobClient('copied');
         $result = $targetBlobClient->syncCopyFromUri($sourceSas);
+
+        self::assertEquals(CopyStatus::SUCCESS, $result->copyStatus);
+
+        $sourceContent = $sourceBlobClient->downloadStreaming()->content->getContents();
+        $targetContent = $targetBlobClient->downloadStreaming()->content->getContents();
+
+        self::assertEquals($targetContent, $sourceContent);
+    }
+
+    #[Test]
+    public function sync_copy_from_url_works_with_public_container(): void
+    {
+        $sourceContainer = $this->tempContainer(public: true);
+        $targetContainer = $this->tempContainer();
+
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
+        $sourceBlobClient->upload('This should be copied from public container!');
+
+        $targetBlobClient = $targetContainer->getBlobClient('copied');
+        $result = $targetBlobClient->syncCopyFromUri($sourceBlobClient->uri);
 
         self::assertEquals(CopyStatus::SUCCESS, $result->copyStatus);
 
@@ -367,7 +387,7 @@ final class BlobClientTest extends TestCase
     }
 
     #[Test]
-    public function start_copy_from_url_works(): void
+    public function start_copy_from_url_works_with_sas(): void
     {
         $sourceContainer = $this->tempContainer();
         $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
@@ -381,6 +401,22 @@ final class BlobClientTest extends TestCase
         $targetContainer = $this->tempContainer();
         $targetBlob = $targetContainer->getBlobClient('copied');
         $targetBlob->startCopyFromUri($sourceSas);
+
+        // this might finish sync or async, but we can't check for a specific behaviour
+
+        self::assertTrue($targetBlob->getProperties()->copyStatus !== null);
+    }
+
+    #[Test]
+    public function start_copy_from_url_works_with_public_container(): void
+    {
+        $sourceContainer = $this->tempContainer(public: true);
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
+        $sourceBlobClient->upload('This should be copied from public container!');
+
+        $targetContainer = $this->tempContainer();
+        $targetBlob = $targetContainer->getBlobClient('copied');
+        $targetBlob->startCopyFromUri($sourceBlobClient->uri);
 
         // this might finish sync or async, but we can't check for a specific behaviour
 
@@ -411,18 +447,13 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function abort_copy_from_url_throws_if_copy_id_doesnt_exist(): void
     {
-        $sourceContainer = $this->tempContainer();
+        $sourceContainer = $this->tempContainer(public: true);
         $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
         $sourceBlobClient->upload('This should be copied!');
-        $sourceSas = $sourceBlobClient->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
 
         $targetContainer = $this->tempContainer();
         $targetBlob = $targetContainer->getBlobClient('copied');
-        $result = $targetBlob->syncCopyFromUri($sourceSas);
+        $result = $targetBlob->syncCopyFromUri($sourceBlobClient->uri);
 
         $this->expectException(NoPendingCopyOperationException::class);
 
@@ -432,18 +463,13 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function wait_for_copy_completion_works_with_sync_copy(): void
     {
-        $sourceContainer = $this->tempContainer();
+        $sourceContainer = $this->tempContainer(public: true);
         $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
         $sourceBlobClient->upload('This should be copied!');
-        $sourceSas = $sourceBlobClient->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
 
         $targetContainer = $this->tempContainer();
         $targetBlob = $targetContainer->getBlobClient('copied');
-        $targetBlob->syncCopyFromUri($sourceSas);
+        $targetBlob->syncCopyFromUri($sourceBlobClient->uri);
 
         $properties = $targetBlob->waitForCopyCompletion();
 
@@ -453,20 +479,15 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function wait_for_copy_completion_works_with_async_copy(): void
     {
-        $sourceContainer = $this->tempContainer();
+        $sourceContainer = $this->tempContainer(public: true);
         $sourceBlob = $sourceContainer->getBlobClient('from');
         // Create a 10MB stream to increase the chance of pending state
         $sourceBlob->upload($this->tempFile(10 * 1024 * 1024));
-        $sourceSas = $sourceBlob->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
 
-        $targetContainer = $this->tempContainer(public: true);
+        $targetContainer = $this->tempContainer();
         $targetBlob = $targetContainer->getBlobClient('to');
 
-        $targetBlob->startCopyFromUri($sourceSas);
+        $targetBlob->startCopyFromUri($sourceBlob->uri);
 
         // Check if copy is still pending, if not skip test as copy was too fast
         $properties = $targetBlob->getProperties();
@@ -488,20 +509,15 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function wait_for_copy_completion_throws_timeout(): void
     {
-        $sourceContainer = $this->tempContainer();
+        $sourceContainer = $this->tempContainer(public: true);
         $sourceBlob = $sourceContainer->getBlobClient('from');
         // Create a 10MB stream to increase the chance of pending state
         $sourceBlob->upload($this->tempFile(10 * 1024 * 1024));
-        $fromSas = $sourceBlob->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
 
-        $targetContainer = $this->tempContainer(public: true);
+        $targetContainer = $this->tempContainer();
         $targetBlob = $targetContainer->getBlobClient('to');
 
-        $targetBlob->startCopyFromUri($fromSas);
+        $targetBlob->startCopyFromUri($sourceBlob->uri);
 
         // Check if copy is still pending, if not skip test as copy was too fast
         $properties = $targetBlob->getProperties();
