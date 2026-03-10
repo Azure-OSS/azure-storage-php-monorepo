@@ -1,10 +1,12 @@
 on:
-  workflow_dispatch:
+  pull_request:
+    types: [labeled]
 
 name: Azure Infrastructure Tests
 
 jobs:
   azure-tests:
+    if: github.event.label.name == 'azure-tests'
     name: Azure Tests - PHP ${{ matrix.php-version }}
 
     environment: azure-testing
