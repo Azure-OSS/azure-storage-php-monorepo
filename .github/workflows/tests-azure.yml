@@ -4,6 +4,10 @@ on:
 
 name: Azure Infrastructure Tests
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   azure-tests:
     if: github.event.label.name == 'azure-tests'
