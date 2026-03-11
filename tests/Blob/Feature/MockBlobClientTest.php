@@ -7,7 +7,7 @@ namespace AzureOss\Storage\Tests\Blob\Feature;
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
-use AzureOss\Storage\Tests\Utils\FileFactory;
+use AzureOss\Storage\Tests\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Uri;
@@ -18,7 +18,9 @@ use Psr\Http\Message\StreamInterface;
 
 class MockBlobClientTest extends TestCase
 {
-    private BlobClient $mockBlobClient;
+    use CreatesTempFiles;
+
+    private BlobClient $blob;
 
     protected function setUp(): void
     {
@@ -26,9 +28,9 @@ class MockBlobClientTest extends TestCase
 
         /** @phpstan-ignore-next-line */
         $uri = new Uri(Server::$url.'/devstoreaccount1');
-        $mockServiceClient = new BlobServiceClient($uri);
-        $mockContainerClient = $mockServiceClient->getContainerClient('test');
-        $this->mockBlobClient = $mockContainerClient->getBlobClient('test');
+        $service = new BlobServiceClient($uri);
+        $container = $service->getContainerClient('test');
+        $this->blob = $container->getBlobClient('test');
     }
 
     protected function tearDown(): void
@@ -46,9 +48,8 @@ class MockBlobClientTest extends TestCase
             new Response(501), // fail if more requests
         ]);
 
-        FileFactory::withStream(1000, function (StreamInterface $file) {
-            $this->mockBlobClient->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 2000));
-        });
+        $file = $this->tempFile(1000);
+        $this->blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 2000));
     }
 
     #[Test]
@@ -61,9 +62,8 @@ class MockBlobClientTest extends TestCase
             new Response(501), // fail if more requests
         ]);
 
-        FileFactory::withStream(50_000_000, function (StreamInterface $file) {
-            $this->mockBlobClient->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
-        });
+        $file = $this->tempFile(50_000_000);
+        $this->blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
     }
 
     #[Test]
@@ -76,9 +76,8 @@ class MockBlobClientTest extends TestCase
             new Response(501), // fail if more requests
         ]);
 
-        FileFactory::withStream(50_000, function (StreamInterface $file) {
-            $this->mockBlobClient->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 8_000_000));
-        });
+        $file = $this->tempFile(50_000);
+        $this->blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 8_000_000));
     }
 
     #[Test]
@@ -91,19 +90,19 @@ class MockBlobClientTest extends TestCase
             new Response(501), // fail if more requests
         ]);
 
-        FileFactory::withStream(50_000_000, function (StreamInterface $file) {
-            $stream = new class($file) implements StreamInterface
+        $file = $this->tempFile(50_000_000);
+
+        $stream = new class($file) implements StreamInterface
+        {
+            use StreamDecoratorTrait;
+
+            public function getSize(): ?int
             {
-                use StreamDecoratorTrait;
+                return null;
+            }
+        };
 
-                public function getSize(): ?int
-                {
-                    return null;
-                }
-            };
-
-            $this->mockBlobClient->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
-        });
+        $this->blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
     }
 
     #[Test]
@@ -124,6 +123,6 @@ class MockBlobClientTest extends TestCase
             self::fail();
         }
 
-        $this->mockBlobClient->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
+        $this->blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 0, maximumTransferSize: 5_000_000));
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace AzureOss\Storage\Tests\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobClient;
-use AzureOss\Storage\Blob\BlobContainerClient;
 use AzureOss\Storage\Blob\Exceptions\BlobNotFoundException;
 use AzureOss\Storage\Blob\Exceptions\CannotVerifyCopySourceException;
 use AzureOss\Storage\Blob\Exceptions\ContainerNotFoundException;
@@ -17,53 +16,31 @@ use AzureOss\Storage\Blob\Models\UploadBlobOptions;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
 use AzureOss\Storage\Blob\Sas\BlobSasPermissions;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
-use AzureOss\Storage\Tests\Blob\BlobFeatureTestCase;
-use AzureOss\Storage\Tests\Utils\FileFactory;
+use AzureOss\Storage\Tests\CreatesTempContainers;
+use AzureOss\Storage\Tests\CreatesTempFiles;
 use GuzzleHttp\Psr7\NoSeekStream;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Uri;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\StreamInterface;
 
-final class BlobClientTest extends BlobFeatureTestCase
+final class BlobClientTest extends TestCase
 {
-    private BlobContainerClient $containerClient;
-
-    private BlobClient $blobClient;
-
-    private ?BlobContainerClient $secondaryContainerClient = null;
-
-    private ?BlobClient $secondaryBlobClient = null;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->containerClient = $this->serviceClient->getContainerClient('blobclient');
-        $this->blobClient = $this->containerClient->getBlobClient('some/file.txt');
-        $this->cleanContainer($this->containerClient->containerName);
-
-        if ($this->hasSecondaryStorageAccount()) {
-            $this->secondaryContainerClient = $this->secondaryServiceClient->getContainerClient('blobclient-secondary');
-            $this->secondaryBlobClient = $this->secondaryContainerClient->getBlobClient('some/file.txt');
-            $this->cleanContainer($this->secondaryContainerClient->containerName, $this->secondaryServiceClient);
-        }
-    }
-
-    /**
-     * @phpstan-assert !null $this->secondaryBlobClient
-     */
-    protected function requireSecondaryStorageAccount(): void
-    {
-        parent::requireSecondaryStorageAccount();
-    }
+    use CreatesTempContainers, CreatesTempFiles;
 
     #[Test]
     public function download_stream_works(): void
     {
-        $content = 'Lorem ipsum dolor sit amet';
-        $this->blobClient->upload($content, new UploadBlobOptions('text/plain'));
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
 
-        $result = $this->blobClient->downloadStreaming();
+        $content = 'Lorem ipsum dolor sit amet';
+        $blob->upload($content, new UploadBlobOptions('text/plain'));
+
+        $result = $blob->downloadStreaming();
 
         self::assertEquals($result->properties->contentLength, strlen($content));
         self::assertEquals('text/plain', $result->properties->contentType);
@@ -75,7 +52,7 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->downloadStreaming();
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->downloadStreaming();
     }
 
     #[Test]
@@ -83,16 +60,19 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(BlobNotFoundException::class);
 
-        $this->blobClient->downloadStreaming();
+        $this->tempContainer()->getBlobClient('noop')->downloadStreaming();
     }
 
     #[Test]
     public function get_properties_works(): void
     {
-        $content = 'Lorem ipsum dolor sit amet';
-        $this->blobClient->upload($content, new UploadBlobOptions('text/plain'));
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
 
-        $result = $this->blobClient->getProperties();
+        $content = 'Lorem ipsum dolor sit amet';
+        $blob->upload($content, new UploadBlobOptions('text/plain'));
+
+        $result = $blob->getProperties();
 
         self::assertEquals($result->contentLength, strlen($content));
         self::assertEquals('text/plain', $result->contentType);
@@ -103,7 +83,7 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->getProperties();
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->getProperties();
     }
 
     #[Test]
@@ -111,55 +91,61 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(BlobNotFoundException::class);
 
-        $this->blobClient->getProperties();
+        $this->tempContainer()->getBlobClient('noop')->getProperties();
     }
 
     #[Test]
     public function delete_works(): void
     {
-        $this->blobClient->upload('test');
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
 
-        self::assertTrue($this->blobClient->exists());
+        $blob->upload('test');
 
-        $this->blobClient->delete();
+        self::assertTrue($blob->exists());
 
-        self::assertFalse($this->blobClient->exists());
+        $blob->delete();
+
+        self::assertFalse($blob->exists());
     }
 
     #[Test]
-    public function delete_works_throws_if_container_doesnt_exist(): void
+    public function delete_throws_if_container_doesnt_exist(): void
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->delete();
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->delete();
     }
 
     #[Test]
-    public function delete_works_throws_if_blob_doesnt_exist(): void
+    public function delete_throws_if_blob_doesnt_exist(): void
     {
         $this->expectException(BlobNotFoundException::class);
 
-        $this->blobClient->deleteIfExists();
-        $this->blobClient->delete();
+        $this->tempContainer()->getBlobClient('noop')->delete();
     }
 
     #[Test]
     public function delete_if_exists_works(): void
     {
-        $this->blobClient->upload('test');
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
 
-        self::assertTrue($this->blobClient->exists());
+        $blob->upload('test');
 
-        $this->blobClient->deleteIfExists();
+        self::assertTrue($blob->exists());
 
-        self::assertFalse($this->blobClient->exists());
+        $blob->deleteIfExists();
+
+        self::assertFalse($blob->exists());
     }
 
+    #[Test]
     public function delete_if_exists_throws_if_container_doesnt_exist(): void
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->blobClient->deleteIfExists();
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->deleteIfExists();
     }
 
     #[Test]
@@ -167,17 +153,20 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectNotToPerformAssertions();
 
-        $this->blobClient->deleteIfExists();
+        $this->tempContainer()->getBlobClient('noop')->deleteIfExists();
     }
 
     #[Test]
     public function exists_works(): void
     {
-        self::assertFalse($this->blobClient->exists());
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
 
-        $this->blobClient->upload('test');
+        self::assertFalse($blob->exists());
 
-        self::assertTrue($this->blobClient->exists());
+        $blob->upload('test');
+
+        self::assertTrue($blob->exists());
     }
 
     #[Test]
@@ -185,128 +174,139 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->exists();
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->exists();
     }
 
     #[Test]
     public function upload_works_with_single_upload(): void
     {
-        FileFactory::withStream(1000, function (StreamInterface $file) {
-            $beforeUploadContent = $file->getContents();
-            $file->rewind();
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $file = $this->tempFile(1000);
 
-            $this->blobClient->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 2000));
+        $beforeUploadContent = $file->getContents();
+        $file->rewind();
 
-            $properties = $this->blobClient->getProperties();
+        $blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 2000));
 
-            self::assertEquals('text/plain', $properties->contentType);
-            self::assertEquals(1000, $properties->contentLength);
+        $properties = $blob->getProperties();
 
-            $afterUploadContent = $this->blobClient->downloadStreaming()->content;
+        self::assertEquals('text/plain', $properties->contentType);
+        self::assertEquals(1000, $properties->contentLength);
 
-            self::assertEquals($beforeUploadContent, $afterUploadContent);
-        });
+        $afterUploadContent = $blob->downloadStreaming()->content;
+
+        self::assertEquals($beforeUploadContent, $afterUploadContent);
     }
 
     #[Test]
     public function upload_works_with_parallel_upload(): void
     {
-        FileFactory::withStream(1000, function (StreamInterface $file) {
-            $beforeUploadContent = $file->getContents();
-            $file->rewind();
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $file = $this->tempFile(1000);
 
-            $this->blobClient->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $beforeUploadContent = $file->getContents();
+        $file->rewind();
 
-            $properties = $this->blobClient->getProperties();
+        $blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
 
-            self::assertEquals('text/plain', $properties->contentType);
-            self::assertEquals(1000, $properties->contentLength);
+        $properties = $blob->getProperties();
 
-            $blob = $this->blobClient->downloadStreaming();
+        self::assertEquals('text/plain', $properties->contentType);
+        self::assertEquals(1000, $properties->contentLength);
 
-            self::assertEquals($beforeUploadContent, $blob->content);
-            self::assertEquals(md5($beforeUploadContent), $blob->properties->contentMD5);
-        });
+        $result = $blob->downloadStreaming();
+
+        self::assertEquals($beforeUploadContent, $result->content->getContents());
+        self::assertEquals(md5($beforeUploadContent), $result->properties->contentMD5);
     }
 
     #[Test]
     public function upload_works_with_unknown_sized_stream(): void
     {
-        FileFactory::withStream(1000, function (StreamInterface $file) {
-            $stream = new class($file) implements StreamInterface
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $file = $this->tempFile(1000);
+
+        $stream = new class($file) implements StreamInterface
+        {
+            use StreamDecoratorTrait;
+
+            public function detach()
             {
-                use StreamDecoratorTrait;
+                return null;
+            }
 
-                public function detach()
-                {
-                    return null;
-                }
+            public function getSize(): ?int
+            {
+                return null;
+            }
+        };
 
-                public function getSize(): ?int
-                {
-                    return null;
-                }
-            };
+        $beforeUploadContent = $file->getContents();
+        $file->rewind();
 
-            $beforeUploadContent = $file->getContents();
-            $file->rewind();
+        $blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
 
-            $this->blobClient->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $properties = $blob->getProperties();
 
-            $properties = $this->blobClient->getProperties();
+        self::assertEquals('text/plain', $properties->contentType);
+        self::assertEquals(1000, $properties->contentLength);
 
-            self::assertEquals('text/plain', $properties->contentType);
-            self::assertEquals(1000, $properties->contentLength);
+        $result = $blob->downloadStreaming();
 
-            $blob = $this->blobClient->downloadStreaming();
-
-            self::assertEquals($beforeUploadContent, $blob->content);
-            self::assertEquals(md5($beforeUploadContent), $blob->properties->contentMD5);
-        });
+        self::assertEquals($beforeUploadContent, $result->content->getContents());
+        self::assertEquals(md5($beforeUploadContent), $result->properties->contentMD5);
     }
 
     #[Test]
     public function upload_works_with_non_seekable_stream(): void
     {
-        FileFactory::withStream(1000, function (StreamInterface $file) {
-            $stream = new class(new NoSeekStream($file)) implements StreamInterface
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $file = $this->tempFile(1000);
+
+        $stream = new class(new NoSeekStream($file)) implements StreamInterface
+        {
+            use StreamDecoratorTrait;
+
+            public function detach()
             {
-                use StreamDecoratorTrait;
+                return null;
+            }
+        };
 
-                public function detach()
-                {
-                    return null;
-                }
-            };
+        $beforeUploadContent = $file->getContents();
+        $file->rewind();
 
-            $beforeUploadContent = $file->getContents();
-            $file->rewind();
+        $blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
 
-            $this->blobClient->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $properties = $blob->getProperties();
 
-            $properties = $this->blobClient->getProperties();
+        self::assertEquals('text/plain', $properties->contentType);
+        self::assertEquals(1000, $properties->contentLength);
 
-            self::assertEquals('text/plain', $properties->contentType);
-            self::assertEquals(1000, $properties->contentLength);
+        $result = $blob->downloadStreaming();
 
-            $blob = $this->blobClient->downloadStreaming();
-
-            self::assertEquals($beforeUploadContent, $blob->content);
-            self::assertEquals(md5($beforeUploadContent), $blob->properties->contentMD5);
-        });
+        self::assertEquals($beforeUploadContent, $result->content->getContents());
+        self::assertEquals(md5($beforeUploadContent), $result->properties->contentMD5);
     }
 
     #[Test]
     public function upload_works_with_empty_file(): void
     {
-        $this->blobClient->upload('', new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
 
-        $properties = $this->blobClient->getProperties();
+        $blob->upload('', new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+
+        $properties = $blob->getProperties();
 
         self::assertEquals('text/plain', $properties->contentType);
         self::assertEquals(0, $properties->contentLength);
 
-        $afterUploadContent = $this->blobClient->downloadStreaming()->content;
+        $afterUploadContent = $blob->downloadStreaming()->content->getContents();
 
         self::assertEquals('', $afterUploadContent);
     }
@@ -316,17 +316,48 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->upload('test');
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->upload('test');
     }
 
     #[Test]
-    public function sync_copy_from_url_works(): void
+    #[Group('slow')]
+    #[DataProvider('benchFiles')]
+    public function upload_uses_low_memory(int $fileSize, int $count): void
     {
-        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('benchmark');
 
-        $this->cleanContainer($sourceContainerClient->containerName);
+        $startMemory = memory_get_peak_usage(true);
 
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
+        for ($i = 0; $i < $count; $i++) {
+            $file = $this->tempFile($fileSize);
+            $blob->upload($file);
+        }
+
+        $endMemory = memory_get_peak_usage(true);
+
+        $memoryUsed = ($endMemory - $startMemory) / 1024 / 1024; // MB
+
+        // Assert memory usage is reasonable (< 16MB)
+        self::assertLessThan(16, $memoryUsed, 'Memory usage should be less than 16MB');
+    }
+
+    public static function benchFiles(): \Generator
+    {
+        yield '100x10KB' => [10_000, 100];
+        yield '10x10MB' => [10_000_000, 10];
+        yield '5x100MB' => [100_000_000, 5];
+        yield '2x1GB' => [1_000_000_000, 2];
+        yield '1x4GB' => [4_000_000_000, 1];
+    }
+
+    #[Test]
+    public function sync_copy_from_url_works_with_sas(): void
+    {
+        $sourceContainer = $this->tempContainer();
+        $targetContainer = $this->tempContainer();
+
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
         $sourceBlobClient->upload('This should be copied!');
         $sourceSas = $sourceBlobClient->generateSasUri(
             BlobSasBuilder::new()
@@ -334,12 +365,33 @@ final class BlobClientTest extends BlobFeatureTestCase
                 ->setExpiresOn((new \DateTime)->modify('+ 1min')),
         );
 
-        $result = $this->blobClient->syncCopyFromUri($sourceSas);
+        $targetBlobClient = $targetContainer->getBlobClient('copied');
+        $result = $targetBlobClient->syncCopyFromUri($sourceSas);
 
         self::assertEquals(CopyStatus::SUCCESS, $result->copyStatus);
 
         $sourceContent = $sourceBlobClient->downloadStreaming()->content->getContents();
-        $targetContent = $this->blobClient->downloadStreaming()->content->getContents();
+        $targetContent = $targetBlobClient->downloadStreaming()->content->getContents();
+
+        self::assertEquals($targetContent, $sourceContent);
+    }
+
+    #[Test]
+    public function sync_copy_from_url_works_with_public_container(): void
+    {
+        $sourceContainer = $this->tempContainer(public: true);
+        $targetContainer = $this->tempContainer();
+
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
+        $sourceBlobClient->upload('This should be copied from public container!');
+
+        $targetBlobClient = $targetContainer->getBlobClient('copied');
+        $result = $targetBlobClient->syncCopyFromUri($sourceBlobClient->uri);
+
+        self::assertEquals(CopyStatus::SUCCESS, $result->copyStatus);
+
+        $sourceContent = $sourceBlobClient->downloadStreaming()->content->getContents();
+        $targetContent = $targetBlobClient->downloadStreaming()->content->getContents();
 
         self::assertEquals($targetContent, $sourceContent);
     }
@@ -347,53 +399,32 @@ final class BlobClientTest extends BlobFeatureTestCase
     #[Test]
     public function sync_copy_from_url_throws_if_source_container_doesnt_exist(): void
     {
-        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
-        $sourceContainerClient->deleteIfExists(); // cleanup
+        $sourceContainer = $this->service(public: true)->getContainerClient('nonexistent-'.uniqid());
+        $sourceBlob = $sourceContainer->getBlobClient('to_copy');
 
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
-        $sourceSas = $sourceBlobClient->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
+        $this->expectException(CannotVerifyCopySourceException::class);
 
-        // somehow azurite doesn't throw the expected exception
-        if ($this->isUsingSimulator()) {
-            $this->expectException(ContainerNotFoundException::class);
-        } else {
-            $this->expectException(CannotVerifyCopySourceException::class);
-        }
-
-        $this->blobClient->syncCopyFromUri($sourceSas);
+        $targetContainer = $this->tempContainer();
+        $targetContainer->getBlobClient('test')->syncCopyFromUri($sourceBlob->uri);
     }
 
     #[Test]
     public function sync_copy_from_url_works_throws_if_source_blob_doesnt_exist(): void
     {
-        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
+        $sourceContainer = $this->tempContainer(public: true);
+        $sourceBlob = $sourceContainer->getBlobClient('to_copy');
 
-        $this->cleanContainer($sourceContainerClient->containerName);
+        $this->expectException(CannotVerifyCopySourceException::class);
 
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
-
-        // somehow azurite doesn't throw the expected exception
-        if ($this->isUsingSimulator()) {
-            $this->expectException(BlobNotFoundException::class);
-        } else {
-            $this->expectException(CannotVerifyCopySourceException::class);
-        }
-
-        $this->blobClient->syncCopyFromUri($sourceBlobClient->uri);
+        $targetContainer = $this->tempContainer();
+        $targetContainer->getBlobClient('test')->syncCopyFromUri($sourceBlob->uri);
     }
 
     #[Test]
-    public function start_copy_from_url_works(): void
+    public function start_copy_from_url_works_with_sas(): void
     {
-        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
-
-        $this->cleanContainer($sourceContainerClient->containerName);
-
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
+        $sourceContainer = $this->tempContainer();
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
         $sourceBlobClient->upload('This should be copied!');
         $sourceSas = $sourceBlobClient->generateSasUri(
             BlobSasBuilder::new()
@@ -401,25 +432,41 @@ final class BlobClientTest extends BlobFeatureTestCase
                 ->setExpiresOn((new \DateTime)->modify('+ 1min')),
         );
 
-        $this->blobClient->startCopyFromUri($sourceSas);
+        $targetContainer = $this->tempContainer();
+        $targetBlob = $targetContainer->getBlobClient('copied');
+        $targetBlob->startCopyFromUri($sourceSas);
 
         // this might finish sync or async, but we can't check for a specific behaviour
 
-        self::assertTrue($this->blobClient->getProperties()->copyStatus !== null);
+        self::assertTrue($targetBlob->getProperties()->copyStatus !== null);
+    }
+
+    #[Test]
+    public function start_copy_from_url_works_with_public_container(): void
+    {
+        $sourceContainer = $this->tempContainer(public: true);
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
+        $sourceBlobClient->upload('This should be copied from public container!');
+
+        $targetContainer = $this->tempContainer();
+        $targetBlob = $targetContainer->getBlobClient('copied');
+        $targetBlob->startCopyFromUri($sourceBlobClient->uri);
+
+        // this might finish sync or async, but we can't check for a specific behaviour
+
+        self::assertTrue($targetBlob->getProperties()->copyStatus !== null);
     }
 
     #[Test]
     public function start_copy_from_url_throws_if_source_blob_doesnt_exist(): void
     {
-        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
-
-        $this->cleanContainer($sourceContainerClient->containerName);
-
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
+        $sourceContainer = $this->tempContainer();
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
 
         $this->expectException(BlobNotFoundException::class);
 
-        $this->blobClient->startCopyFromUri($sourceBlobClient->uri);
+        $targetContainer = $this->tempContainer();
+        $targetContainer->getBlobClient('test')->startCopyFromUri($sourceBlobClient->uri);
     }
 
     #[Test]
@@ -434,43 +481,31 @@ final class BlobClientTest extends BlobFeatureTestCase
     #[Test]
     public function abort_copy_from_url_throws_if_copy_id_doesnt_exist(): void
     {
-        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
-
-        $this->cleanContainer($sourceContainerClient->containerName);
-
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
+        $sourceContainer = $this->tempContainer(public: true);
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
         $sourceBlobClient->upload('This should be copied!');
-        $sourceSas = $sourceBlobClient->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
 
-        $result = $this->blobClient->syncCopyFromUri($sourceSas);
+        $targetContainer = $this->tempContainer();
+        $targetBlob = $targetContainer->getBlobClient('copied');
+        $result = $targetBlob->syncCopyFromUri($sourceBlobClient->uri);
 
         $this->expectException(NoPendingCopyOperationException::class);
 
-        $this->blobClient->abortCopyFromUri($result->copyId);
+        $targetBlob->abortCopyFromUri($result->copyId);
     }
 
     #[Test]
     public function wait_for_copy_completion_works_with_sync_copy(): void
     {
-        $sourceContainerClient = $this->serviceClient->getContainerClient($this->randomContainerName());
-
-        $this->cleanContainer($sourceContainerClient->containerName);
-
-        $sourceBlobClient = $sourceContainerClient->getBlobClient('to_copy');
+        $sourceContainer = $this->tempContainer(public: true);
+        $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
         $sourceBlobClient->upload('This should be copied!');
-        $sourceSas = $sourceBlobClient->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
 
-        $this->blobClient->syncCopyFromUri($sourceSas);
+        $targetContainer = $this->tempContainer();
+        $targetBlob = $targetContainer->getBlobClient('copied');
+        $targetBlob->syncCopyFromUri($sourceBlobClient->uri);
 
-        $properties = $this->blobClient->waitForCopyCompletion();
+        $properties = $targetBlob->waitForCopyCompletion();
 
         self::assertEquals(CopyStatus::SUCCESS, $properties->copyStatus);
     }
@@ -478,29 +513,26 @@ final class BlobClientTest extends BlobFeatureTestCase
     #[Test]
     public function wait_for_copy_completion_works_with_async_copy(): void
     {
-        $this->requireSecondaryStorageAccount();
+        $sourceContainer = $this->tempContainer(public: true);
+        $sourceBlob = $sourceContainer->getBlobClient('from');
+        // Create a 10MB stream to increase the chance of pending state
+        $sourceBlob->upload($this->tempFile(10 * 1024 * 1024));
 
-        $secondaryBlobClient = $this->secondaryBlobClient;
+        $targetContainer = $this->tempContainer();
+        $targetBlob = $targetContainer->getBlobClient('to');
 
-        // Create a 10MB stream
-        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($secondaryBlobClient) {
-            $secondaryBlobClient->upload($largeFile);
-        });
+        $targetBlob->startCopyFromUri($sourceBlob->uri);
 
-        $sourceSas = $secondaryBlobClient->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
+        // Check if copy is still pending, if not skip test as copy was too fast
+        $properties = $targetBlob->getProperties();
+        if ($properties->copyStatus !== CopyStatus::PENDING) {
+            self::markTestSkipped('Copy operation completed too quickly to test timeout');
+        }
 
-        $this->blobClient->startCopyFromUri($sourceSas);
+        $targetBlob->waitForCopyCompletion(pollingIntervalMs: 100);
 
-        $properties = $this->blobClient->waitForCopyCompletion(pollingIntervalMs: 100);
-
-        self::assertEquals(CopyStatus::SUCCESS, $properties->copyStatus);
-
-        $sourceContent = $secondaryBlobClient->downloadStreaming()->content->getContents();
-        $targetContent = $this->blobClient->downloadStreaming()->content->getContents();
+        $sourceContent = $sourceBlob->downloadStreaming()->content->getContents();
+        $targetContent = $targetBlob->downloadStreaming()->content->getContents();
 
         self::assertEquals($sourceContent, $targetContent);
     }
@@ -508,26 +540,18 @@ final class BlobClientTest extends BlobFeatureTestCase
     #[Test]
     public function wait_for_copy_completion_throws_timeout(): void
     {
-        $this->markTestSkippedWhenUsingSimulator();
-        $this->requireSecondaryStorageAccount();
-
-        $secondaryBlobClient = $this->secondaryBlobClient;
-
+        $sourceContainer = $this->tempContainer(public: true);
+        $sourceBlob = $sourceContainer->getBlobClient('from');
         // Create a 10MB stream to increase the chance of pending state
-        FileFactory::withStream(10 * 1024 * 1024, function (StreamInterface $largeFile) use ($secondaryBlobClient) {
-            $secondaryBlobClient->upload($largeFile);
-        });
+        $sourceBlob->upload($this->tempFile(10 * 1024 * 1024));
 
-        $sourceSas = $secondaryBlobClient->generateSasUri(
-            BlobSasBuilder::new()
-                ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
-        );
+        $targetContainer = $this->tempContainer();
+        $targetBlob = $targetContainer->getBlobClient('to');
 
-        $this->blobClient->startCopyFromUri($sourceSas);
+        $targetBlob->startCopyFromUri($sourceBlob->uri);
 
         // Check if copy is still pending, if not skip test as copy was too fast
-        $properties = $this->blobClient->getProperties();
+        $properties = $targetBlob->getProperties();
         if ($properties->copyStatus !== CopyStatus::PENDING) {
             self::markTestSkipped('Copy operation completed too quickly to test timeout');
         }
@@ -535,15 +559,17 @@ final class BlobClientTest extends BlobFeatureTestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Timeout waiting for blob copy to complete');
 
-        $this->blobClient->waitForCopyCompletion(pollingIntervalMs: 100, timeoutMs: 1);
+        $targetBlob->waitForCopyCompletion(pollingIntervalMs: 100, timeoutMs: 1);
     }
 
     #[Test]
     public function wait_for_copy_completion_returns_immediately_when_no_copy_operation(): void
     {
-        $this->blobClient->upload('test content');
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $blob->upload('test content');
 
-        $properties = $this->blobClient->waitForCopyCompletion();
+        $properties = $blob->waitForCopyCompletion();
 
         self::assertNull($properties->copyStatus);
     }
@@ -568,7 +594,8 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectNotToPerformAssertions();
 
-        $blobClient = $this->containerClient->getBlobClient('blob');
+        $container = $this->tempContainer();
+        $blobClient = $container->getBlobClient('blob');
         $blobClient->upload('test');
 
         $sas = $blobClient->generateSasUri(
@@ -585,10 +612,12 @@ final class BlobClientTest extends BlobFeatureTestCase
     #[Test]
     public function set_tags_works(): void
     {
-        $this->blobClient->upload('');
-        $this->blobClient->setTags(['foo' => 'bar', 'baz' => 'boo']);
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $blob->upload('');
+        $blob->setTags(['foo' => 'bar', 'baz' => 'boo']);
 
-        $tags = $this->blobClient->getTags();
+        $tags = $blob->getTags();
 
         self::assertEquals($tags['foo'], 'bar');
         self::assertEquals($tags['baz'], 'boo');
@@ -599,7 +628,7 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->setTags(['foo' => 'bar']);
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->setTags(['foo' => 'bar']);
     }
 
     #[Test]
@@ -607,7 +636,8 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(BlobNotFoundException::class);
 
-        $this->blobClient->setTags(['foo' => 'bar']);
+        $container = $this->tempContainer();
+        $container->getBlobClient('test')->setTags(['foo' => 'bar']);
     }
 
     #[Test]
@@ -615,7 +645,8 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(TagsTooLargeException::class);
 
-        $this->blobClient->setTags([str_pad('', 1000, 'a') => 'noop']);
+        $container = $this->tempContainer();
+        $container->getBlobClient('test')->setTags([str_pad('', 1000, 'a') => 'noop']);
     }
 
     #[Test]
@@ -623,7 +654,8 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(TagsTooLargeException::class);
 
-        $this->blobClient->setTags(['noop' => str_pad('', 1000, 'a')]);
+        $container = $this->tempContainer();
+        $container->getBlobClient('test')->setTags(['noop' => str_pad('', 1000, 'a')]);
     }
 
     #[Test]
@@ -637,16 +669,19 @@ final class BlobClientTest extends BlobFeatureTestCase
             $tags["tag-$i"] = 'noop';
         }
 
-        $this->blobClient->setTags($tags);
+        $container = $this->tempContainer();
+        $container->getBlobClient('test')->setTags($tags);
     }
 
     #[Test]
     public function get_tags_works(): void
     {
-        $this->blobClient->upload('');
-        $this->blobClient->setTags(['foo' => 'bar', 'baz' => 'boo']);
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $blob->upload('');
+        $blob->setTags(['foo' => 'bar', 'baz' => 'boo']);
 
-        $tags = $this->blobClient->getTags();
+        $tags = $blob->getTags();
 
         self::assertEquals($tags['foo'], 'bar');
         self::assertEquals($tags['baz'], 'boo');
@@ -657,7 +692,7 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->getTags();
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->getTags();
     }
 
     #[Test]
@@ -665,20 +700,23 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(BlobNotFoundException::class);
 
-        $this->blobClient->getTags();
+        $container = $this->tempContainer();
+        $container->getBlobClient('test')->getTags();
     }
 
     #[Test]
     public function set_metadata_works(): void
     {
-        $this->blobClient->upload('');
-        $props = $this->blobClient->getProperties();
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+        $blob->upload('');
+        $props = $blob->getProperties();
 
         self::assertEmpty($props->metadata);
 
-        $this->blobClient->setMetadata(['foo' => 'bar', 'baz' => 'qaz']);
+        $blob->setMetadata(['foo' => 'bar', 'baz' => 'qaz']);
 
-        $props = $this->blobClient->getProperties();
+        $props = $blob->getProperties();
 
         self::assertEquals('bar', $props->metadata['foo']);
         self::assertEquals('qaz', $props->metadata['baz']);
@@ -689,7 +727,7 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->setMetadata(['foo' => 'bar']);
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->setMetadata(['foo' => 'bar']);
     }
 
     #[Test]
@@ -697,19 +735,23 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(BlobNotFoundException::class);
 
-        $this->containerClient->getBlobClient('noop')->setMetadata(['foo' => 'bar']);
+        $container = $this->tempContainer();
+        $container->getBlobClient('noop')->setMetadata(['foo' => 'bar']);
     }
 
     #[Test]
     public function getting_and_setting_http_headers_works(): void
     {
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+
         $originalContent = 'Hello, World!';
         $compressedContent = gzcompress($originalContent);
         if ($compressedContent === false) {
             self::fail('Failed to compress content');
         }
 
-        $this->blobClient->upload(
+        $blob->upload(
             $compressedContent,
             new UploadBlobOptions(httpHeaders: new BlobHttpHeaders(
                 cacheControl: 'immutable',
@@ -721,7 +763,7 @@ final class BlobClientTest extends BlobFeatureTestCase
             )),
         );
 
-        $properties = $this->blobClient->getProperties();
+        $properties = $blob->getProperties();
 
         self::assertEquals('text/plain', $properties->contentType);
         self::assertEquals('immutable', $properties->cacheControl);
@@ -730,27 +772,30 @@ final class BlobClientTest extends BlobFeatureTestCase
         self::assertEquals('gzip', $properties->contentEncoding);
 
         // The content is automatically decompressed when downloaded
-        self::assertEquals($originalContent, $this->blobClient->downloadStreaming()->content->getContents());
+        self::assertEquals($originalContent, $blob->downloadStreaming()->content->getContents());
     }
 
     #[Test]
     public function set_http_headers_works(): void
     {
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('test');
+
         // Upload with initial content type
-        $this->blobClient->upload('test content', new UploadBlobOptions(httpHeaders: new BlobHttpHeaders(
+        $blob->upload('test content', new UploadBlobOptions(httpHeaders: new BlobHttpHeaders(
             contentType: 'application/octet-stream',
         )));
 
-        $initialProps = $this->blobClient->getProperties();
+        $initialProps = $blob->getProperties();
         self::assertEquals('application/octet-stream', $initialProps->contentType);
 
         // Change content type using setHttpHeaders
-        $this->blobClient->setHttpHeaders(new BlobHttpHeaders(
-            contentType: 'text/plain',
+        $blob->setHttpHeaders(new BlobHttpHeaders(
             cacheControl: 'public, max-age=3600',
+            contentType: 'text/plain',
         ));
 
-        $updatedProps = $this->blobClient->getProperties();
+        $updatedProps = $blob->getProperties();
         self::assertEquals('text/plain', $updatedProps->contentType);
         self::assertEquals('public, max-age=3600', $updatedProps->cacheControl);
     }
@@ -758,14 +803,16 @@ final class BlobClientTest extends BlobFeatureTestCase
     #[Test]
     public function set_http_headers_after_copy_works(): void
     {
+        $container = $this->tempContainer(public: true);
+
         // Create source blob
-        $sourceBlobClient = $this->containerClient->getBlobClient('source.txt');
+        $sourceBlobClient = $container->getBlobClient('source.txt');
         $sourceBlobClient->upload('content to copy', new UploadBlobOptions(httpHeaders: new BlobHttpHeaders(
             contentType: 'application/octet-stream',
         )));
 
         // Copy to target
-        $targetBlobClient = $this->containerClient->getBlobClient('target.txt');
+        $targetBlobClient = $container->getBlobClient('target.txt');
         $copyResult = $targetBlobClient->syncCopyFromUri($sourceBlobClient->uri);
 
         self::assertEquals(CopyStatus::SUCCESS, $copyResult->copyStatus);
@@ -788,7 +835,8 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(BlobNotFoundException::class);
 
-        $this->blobClient->setHttpHeaders(new BlobHttpHeaders(
+        $container = $this->tempContainer();
+        $container->getBlobClient('test')->setHttpHeaders(new BlobHttpHeaders(
             contentType: 'text/plain',
         ));
     }
@@ -798,7 +846,7 @@ final class BlobClientTest extends BlobFeatureTestCase
     {
         $this->expectException(ContainerNotFoundException::class);
 
-        $this->serviceClient->getContainerClient('noop')->getBlobClient('noop')->setHttpHeaders(
+        $this->service()->getContainerClient('noop')->getBlobClient('noop')->setHttpHeaders(
             new BlobHttpHeaders(contentType: 'text/plain'),
         );
     }

@@ -25,4 +25,10 @@
             <directory>src</directory>
         </include>
     </source>
+
+    <groups>
+        <exclude>
+            <group>slow</group>
+        </exclude>
+    </groups>
 </phpunit>
