@@ -19,7 +19,7 @@ trait RetryableAssertions
     protected static function assertEventually(
         callable $callback,
         int $maxAttempts = 10,
-        int $delayMs = 100,
+        int $delayMs = 1000,
         ?string $message = null
     ): void {
         $attempt = 0;
