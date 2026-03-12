@@ -17,7 +17,7 @@ Laravel filesystem driver for Azure Storage Blob. Provides seamless integration 
 
 ## Documentation
 
-Docs are here: https://azure-oss.github.io/
+You can read the documentation [here](https://azure-oss.github.io).
 
 ## License
 
