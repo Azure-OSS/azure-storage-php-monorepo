@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Middleware;
 
-use AzureOss\Storage\Common\Auth\AccessToken;
-use AzureOss\Storage\Common\Auth\TokenCredential;
+use AzureOss\Identity\AccessToken;
+use AzureOss\Identity\TokenCredential;
+use AzureOss\Identity\TokenRequestContext;
 use Psr\Http\Message\RequestInterface;
 
 /**
@@ -13,9 +14,14 @@ use Psr\Http\Message\RequestInterface;
  */
 final class AddEntraIdAuthorizationHeaderMiddleware
 {
+    private readonly TokenRequestContext $tokenRequestContext;
+
     private ?AccessToken $cachedAccessToken = null;
 
-    public function __construct(private readonly TokenCredential $tokenCredential) {}
+    public function __construct(private readonly TokenCredential $tokenCredential)
+    {
+        $this->tokenRequestContext = new TokenRequestContext(['https://storage.azure.com/.default']);
+    }
 
     public function __invoke(callable $handler): \Closure
     {
@@ -23,10 +29,10 @@ final class AddEntraIdAuthorizationHeaderMiddleware
             if ($this->cachedAccessToken === null ||
                 $this->expiresInAMinute($this->cachedAccessToken)
             ) {
-                $this->cachedAccessToken = $this->tokenCredential->getToken();
+                $this->cachedAccessToken = $this->tokenCredential->getToken($this->tokenRequestContext);
             }
 
-            $request = $request->withHeader('Authorization', 'Bearer '.$this->cachedAccessToken->accessToken);
+            $request = $request->withHeader('Authorization', $this->cachedAccessToken->tokenType.' '.$this->cachedAccessToken->token);
 
             return $handler($request, $options);
         };

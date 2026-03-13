@@ -6,7 +6,7 @@ namespace AzureOss\Storage\Common\Middleware;
 
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
-use AzureOss\Storage\Common\Auth\TokenCredential;
+use AzureOss\Identity\TokenCredential;
 use AzureOss\Storage\Common\Exceptions\RequestExceptionDeserializer;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
