@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Tests\Common\Feature;
 
-use AzureOss\Storage\Common\Auth\ClientSecretCredential;
+use AzureOss\Identity\ClientSecretCredential;
+use AzureOss\Identity\TokenRequestContext;
 use AzureOss\Storage\Common\Middleware\ClientFactory;
 use GuzzleHttp\RequestOptions;
 use PHPUnit\Framework\Attributes\Test;
@@ -25,9 +26,9 @@ class ClientSecretCredentialTest extends TestCase
 
         $credential = new ClientSecretCredential($tenantId, $clientId, $clientSecret);
 
-        $token = $credential->getToken();
+        $token = $credential->getToken(new TokenRequestContext(['https://storage.azure.com/.default']));
 
-        self::assertGreaterThan(0, strlen($token->accessToken));
+        self::assertGreaterThan(0, strlen($token->token));
         self::assertGreaterThan((new \DateTimeImmutable)->getTimestamp(), $token->expiresOn->getTimestamp());
     }
 

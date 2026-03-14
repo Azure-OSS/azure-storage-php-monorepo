@@ -9,6 +9,7 @@
       "AzureOss\\Storage\\": "src/"
     },
     "files": [
+      "src/Common/aliases.php",
       "src/Blob/aliases.php",
       "src/BlobFlysystem/aliases.php"
     ]
@@ -33,6 +34,7 @@
     "ext-curl": "*",
     "ext-json": "*",
     "ext-simplexml": "*",
+    "azure-oss/identity": "^1.0",
     "caseyamcl/guzzle_retry_middleware": "^2.10",
     "guzzlehttp/guzzle": "^7.8"
   },
@@ -52,6 +54,7 @@
   "config": {
     "sort-packages": true,
     "allow-plugins": {
+      "php-http/discovery": true,
       "phpstan/extension-installer": true
     }
   },
