@@ -45,7 +45,7 @@ Under construction.
 
 ### [azure-oss/identity](https://packagist.org/packages/azure-oss/identity) ![Version](https://img.shields.io/packagist/v/azure-oss/identity) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/identity)
 
-Under construction.
+Azure Active Directory (Entra ID) token authentication.
 
 ## License
 
