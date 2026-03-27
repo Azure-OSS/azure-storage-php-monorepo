@@ -26,6 +26,7 @@ jobs:
         image: mcr.microsoft.com/azure-storage/azurite
         ports:
           - 10000:10000
+          - 10001:10001
 
     runs-on: ${{ matrix.operating-system }}
 
