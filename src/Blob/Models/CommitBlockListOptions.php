@@ -10,6 +10,7 @@ final class CommitBlockListOptions
 
     public function __construct(
         ?BlobHttpHeaders $httpHeaders = null,
+        public ?BlobRequestConditions $conditions = null,
     ) {
         $this->httpHeaders = $httpHeaders ?? new BlobHttpHeaders;
     }

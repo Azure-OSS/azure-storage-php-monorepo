@@ -7,6 +7,7 @@ namespace AzureOss\Storage\Blob\Models;
 use AzureOss\Storage\Blob\Exceptions\DeserializationException;
 use AzureOss\Storage\Blob\Helpers\DeprecationHelper;
 use AzureOss\Storage\Blob\Helpers\MetadataHelper;
+use AzureOss\Storage\Common\Models\ETag;
 use Psr\Http\Message\ResponseInterface;
 
 final class BlobContainerProperties
@@ -19,6 +20,7 @@ final class BlobContainerProperties
     public function __construct(
         public readonly \DateTimeInterface $lastModified,
         public readonly array $metadata,
+        public readonly ?ETag $eTag = null,
     ) {
         DeprecationHelper::constructorWillBePrivate(self::class, '2.0');
     }
@@ -31,7 +33,11 @@ final class BlobContainerProperties
         }
 
         /** @phpstan-ignore-next-line */
-        return new self($lastModified, MetadataHelper::headersToMetadata($response->getHeaders()));
+        return new self(
+            $lastModified,
+            MetadataHelper::headersToMetadata($response->getHeaders()),
+            $response->hasHeader('ETag') ? new ETag($response->getHeaderLine('ETag')) : null,
+        );
     }
 
     public static function fromXml(\SimpleXMLElement $xml): self
@@ -41,10 +47,13 @@ final class BlobContainerProperties
             throw new DeserializationException('Azure returned a malformed date.');
         }
 
+        $eTag = (string) $xml->Etag !== '' ? (string) $xml->Etag : (string) $xml->ETag;
+
         /** @phpstan-ignore-next-line */
         return new self(
             $lastModified,
             [],
+            $eTag !== '' ? new ETag($eTag) : null,
         );
     }
 }

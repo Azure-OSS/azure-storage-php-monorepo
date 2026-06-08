@@ -71,7 +71,7 @@ final class BlockBlobClient
     /**
      * @param  string[]  $base64BlockIds
      */
-    public function commitBlockList(array $base64BlockIds, ?CommitBlockListOptions $options = null): void
+    public function commitBlockList(array $base64BlockIds, CommitBlockListOptions $options = new CommitBlockListOptions): void
     {
         $this->commitBlockListAsync($base64BlockIds, $options)->wait();
     }
@@ -79,18 +79,17 @@ final class BlockBlobClient
     /**
      * @param  string[]  $base64BlockIds
      */
-    public function commitBlockListAsync(array $base64BlockIds, ?CommitBlockListOptions $options = null): PromiseInterface
+    public function commitBlockListAsync(array $base64BlockIds, CommitBlockListOptions $options = new CommitBlockListOptions): PromiseInterface
     {
-        if ($options === null) {
-            $options = new CommitBlockListOptions;
-        }
-
         return $this->client
             ->putAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'comp' => 'blocklist',
                 ],
-                RequestOptions::HEADERS => $options->httpHeaders->toArray(),
+                RequestOptions::HEADERS => [
+                    ...$options->httpHeaders->toArray(),
+                    ...($options->conditions?->toHeaders() ?? []),
+                ],
                 'body' => (new PutBlockRequestBody($base64BlockIds))->toXml()->asXML(),
             ]);
     }

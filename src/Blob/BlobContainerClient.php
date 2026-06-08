@@ -18,8 +18,10 @@ use AzureOss\Storage\Blob\Models\BlobContainerClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerProperties;
 use AzureOss\Storage\Blob\Models\BlobPrefix;
 use AzureOss\Storage\Blob\Models\CreateContainerOptions;
+use AzureOss\Storage\Blob\Models\DeleteContainerOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
 use AzureOss\Storage\Blob\Models\PublicAccessType;
+use AzureOss\Storage\Blob\Models\SetContainerMetadataOptions;
 use AzureOss\Storage\Blob\Models\TaggedBlob;
 use AzureOss\Storage\Blob\Responses\FindBlobsByTagBody;
 use AzureOss\Storage\Blob\Responses\ListBlobsResponseBody;
@@ -143,28 +145,29 @@ final class BlobContainerClient
             });
     }
 
-    public function delete(): void
+    public function delete(DeleteContainerOptions $options = new DeleteContainerOptions): void
     {
-        $this->deleteAsync()->wait();
+        $this->deleteAsync($options)->wait();
     }
 
-    public function deleteAsync(): PromiseInterface
+    public function deleteAsync(DeleteContainerOptions $options = new DeleteContainerOptions): PromiseInterface
     {
         return $this->client->deleteAsync($this->uri, [
             RequestOptions::QUERY => [
                 'restype' => 'container',
             ],
+            RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
         ]);
     }
 
-    public function deleteIfExists(): void
+    public function deleteIfExists(DeleteContainerOptions $options = new DeleteContainerOptions): void
     {
-        $this->deleteIfExistsAsync()->wait();
+        $this->deleteIfExistsAsync($options)->wait();
     }
 
-    public function deleteIfExistsAsync(): PromiseInterface
+    public function deleteIfExistsAsync(DeleteContainerOptions $options = new DeleteContainerOptions): PromiseInterface
     {
-        return $this->deleteAsync()
+        return $this->deleteAsync($options)
             ->otherwise(function (\Throwable $e) {
                 if ($e instanceof ContainerNotFoundException) {
                     return;
@@ -218,22 +221,25 @@ final class BlobContainerClient
     /**
      * @param  array<string>  $metadata
      */
-    public function setMetadata(array $metadata): void
+    public function setMetadata(array $metadata, SetContainerMetadataOptions $options = new SetContainerMetadataOptions): void
     {
-        $this->setMetadataAsync($metadata)->wait();
+        $this->setMetadataAsync($metadata, $options)->wait();
     }
 
     /**
      * @param  array<string>  $metadata
      */
-    public function setMetadataAsync(array $metadata): PromiseInterface
+    public function setMetadataAsync(array $metadata, SetContainerMetadataOptions $options = new SetContainerMetadataOptions): PromiseInterface
     {
         return $this->client->putAsync($this->uri, [
             RequestOptions::QUERY => [
                 'restype' => 'container',
                 'comp' => 'metadata',
             ],
-            RequestOptions::HEADERS => MetadataHelper::metadataToHeaders($metadata),
+            RequestOptions::HEADERS => [
+                ...MetadataHelper::metadataToHeaders($metadata),
+                ...($options->conditions?->toHeaders() ?? []),
+            ],
         ]);
     }
 
