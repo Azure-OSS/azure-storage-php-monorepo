@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Tests\BlobFlysystem;
 
+use AzureOss\Storage\Blob\BlobContainerClient;
 use AzureOss\Storage\BlobFlysystem\AzureBlobStorageAdapter;
+use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +29,7 @@ class AliasTest extends TestCase
 
         // 2. Use the old alias namespace to create an instance (without Azure server)
         $adapter = new $oldClass(
-            new \AzureOss\Storage\Blob\BlobContainerClient(new \GuzzleHttp\Psr7\Uri('http://localhost/container')),
+            new BlobContainerClient(new Uri('http://localhost/container')),
             'flysystem',
         );
 
