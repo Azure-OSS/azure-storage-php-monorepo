@@ -12,7 +12,7 @@ jobs:
       matrix:
         include:
           - prefix: src/Common
-            repo: Azure-OSS/azure-storage-common
+            repo: Azure-OSS/azure-storage-common-php
             secret: DEPLOY_KEY_COMMON
 #          - prefix: meta
 #            repo: Azure-OSS/azure-storage-php
@@ -20,18 +20,21 @@ jobs:
           - prefix: src/Blob
             repo: Azure-OSS/azure-storage-blob-php
             secret: DEPLOY_KEY_BLOB
+          - prefix: src/BlobFlysystem
+            repo: Azure-OSS/azure-storage-blob-flysystem-php
+            secret: DEPLOY_KEY_BLOB_FLYSYSTEM
+          - prefix: src/BlobLaravel
+            repo: Azure-OSS/azure-storage-blob-laravel-php
+            secret: DEPLOY_KEY_BLOB_LARAVEL
+          - prefix: src/BlobSymfony
+            repo: Azure-OSS/azure-storage-blob-symfony-php
+            secret: DEPLOY_KEY_BLOB_SYMFONY
           - prefix: src/Queue
             repo: Azure-OSS/azure-storage-queue-php
             secret: DEPLOY_KEY_QUEUE
-          - prefix: src/BlobFlysystem
-            repo: Azure-OSS/azure-storage-flysystem-php
-            secret: DEPLOY_KEY_BLOB_FLYSYSTEM
-          - prefix: src/BlobLaravel
-            repo: Azure-OSS/azure-storage-laravel-php
-            secret: DEPLOY_KEY_BLOB_LARAVEL
-          - prefix: src/BlobSymfony
-            repo: Azure-OSS/azure-storage-symfony-php
-            secret: DEPLOY_KEY_BLOB_SYMFONY
+          - prefix: src/Queue
+            repo: Azure-OSS/azure-storage-queue-laravel-php
+            secret: DEPLOY_KEY_QUEUE_LARAVEL
     steps:
       - name: Checkout monorepo
         uses: actions/checkout@v4
@@ -40,7 +43,7 @@ jobs:
 
       - name: Cache splitsh-lite
         id: cache-splitsh
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /usr/local/bin/splitsh-lite
           key: splitsh-lite-v1.0.1
