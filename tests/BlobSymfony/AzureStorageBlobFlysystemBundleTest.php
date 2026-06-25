@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\BlobFlysystemSymfony;
+namespace AzureOss\Storage\Tests\BlobSymfony;
 
-use AzureOss\Storage\BlobFlysystemSymfony\AzureOssAdapterDefinitionBuilder;
-use AzureOss\Storage\BlobFlysystemSymfony\AzureOssFlysystemBundle;
+use AzureOss\Storage\BlobSymfony\AzureStorageBlobAdapterDefinitionBuilder;
+use AzureOss\Storage\BlobSymfony\AzureStorageBlobFlysystemBundle;
 use League\FlysystemBundle\Adapter\Builder\AdapterDefinitionBuilderInterface;
 use League\FlysystemBundle\DependencyInjection\FlysystemExtension;
 use League\FlysystemBundle\FlysystemBundle;
@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-final class AzureOssFlysystemBundleTest extends TestCase
+final class AzureStorageBlobFlysystemBundleTest extends TestCase
 {
     public function test_build_registers_adapter_definition_builder(): void
     {
@@ -27,7 +27,7 @@ final class AzureOssFlysystemBundleTest extends TestCase
         $container->registerExtension($flysystemExtension);
         $flysystemBundle->build($container);
 
-        $bundle = new AzureOssFlysystemBundle;
+        $bundle = new AzureStorageBlobFlysystemBundle;
         $bundle->build($container);
 
         $extension = $container->getExtension('flysystem');
@@ -43,7 +43,7 @@ final class AzureOssFlysystemBundleTest extends TestCase
             }
         }
 
-        self::assertInstanceOf(AzureOssAdapterDefinitionBuilder::class, $azureOss, 'AzureOssFlysystemBundle did not register the azure_oss adapter builder.');
+        self::assertInstanceOf(AzureStorageBlobAdapterDefinitionBuilder::class, $azureOss, 'AzureOssFlysystemBundle did not register the azure_oss adapter builder.');
     }
 
     /**

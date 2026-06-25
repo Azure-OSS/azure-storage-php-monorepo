@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\BlobFlysystemSymfony;
+namespace AzureOss\Storage\BlobSymfony;
 
 use AzureOss\Storage\Blob\BlobContainerClient;
 use AzureOss\Storage\BlobFlysystem\AzureBlobStorageAdapter;
@@ -16,7 +16,7 @@ use Symfony\Component\DependencyInjection\Reference;
 /**
  * @internal
  */
-final class AzureOssAdapterDefinitionBuilder implements AdapterDefinitionBuilderInterface
+final class AzureStorageBlobAdapterDefinitionBuilder implements AdapterDefinitionBuilderInterface
 {
     public function getName(): string
     {
@@ -38,68 +38,106 @@ final class AzureOssAdapterDefinitionBuilder implements AdapterDefinitionBuilder
         // flysystem-bundle invokes this with the per-adapter ArrayNodeDefinition;
         // the interface's NodeDefinition type is just the common base.
         if (! $node instanceof ArrayNodeDefinition) {
-            throw new \LogicException(sprintf(
-                'Expected ArrayNodeDefinition, got %s. Did flysystem-bundle change its configuration shape?',
-                $node::class,
-            ));
+            throw new \LogicException(
+                sprintf(
+                    'Expected ArrayNodeDefinition, got %s. Did flysystem-bundle change its configuration shape?',
+                    $node::class,
+                ),
+            );
         }
 
         $children = $node->children();
 
-        $children->scalarNode('client')
+        $children
+            ->scalarNode('client')
             ->isRequired()
-            ->info('Service id of a configured AzureOss\\Storage\\Blob\\BlobServiceClient.');
+            ->info(
+                'Service id of a configured AzureOss\\Storage\\Blob\\BlobServiceClient.',
+            );
 
-        $children->scalarNode('container')
+        $children
+            ->scalarNode('container')
             ->isRequired()
             ->info('Name of the Azure Blob Storage container.');
 
-        $children->scalarNode('prefix')
+        $children
+            ->scalarNode('prefix')
             ->defaultValue('')
             ->info('Optional path prefix prepended to every blob name.');
 
-        $children->scalarNode('mime_type_detector')
+        $children
+            ->scalarNode('mime_type_detector')
             ->defaultNull()
-            ->info('Optional service id of a League\\MimeTypeDetection\\MimeTypeDetector (defaults to FinfoMimeTypeDetector).');
+            ->info(
+                'Optional service id of a League\\MimeTypeDetection\\MimeTypeDetector (defaults to FinfoMimeTypeDetector).',
+            );
 
-        $children->enumNode('visibility_handling')
+        $children
+            ->enumNode('visibility_handling')
             ->values([
                 AzureBlobStorageAdapter::ON_VISIBILITY_THROW_ERROR,
                 AzureBlobStorageAdapter::ON_VISIBILITY_IGNORE,
             ])
             ->defaultValue(AzureBlobStorageAdapter::ON_VISIBILITY_THROW_ERROR)
-            ->info('How setVisibility() calls are handled (Azure has no per-blob ACL): "throw" or "ignore".');
+            ->info(
+                'How setVisibility() calls are handled (Azure has no per-blob ACL): "throw" or "ignore".',
+            );
 
-        $children->booleanNode('public_container')
+        $children
+            ->booleanNode('public_container')
             ->defaultFalse()
-            ->info('Whether the underlying container is set to public access (affects URL generation).');
+            ->info(
+                'Whether the underlying container is set to public access (affects URL generation).',
+            );
     }
 
     /**
      * @param  array<array-key, mixed>  $options
      */
-    public function createAdapter(ContainerBuilder $container, string $storageName, array $options, ?string $defaultVisibilityForDirectories): string
-    {
+    public function createAdapter(
+        ContainerBuilder $container,
+        string $storageName,
+        array $options,
+        ?string $defaultVisibilityForDirectories,
+    ): string {
         $client = self::requireString($options, 'client');
         $containerName = self::requireString($options, 'container');
         $prefix = self::optionalString($options, 'prefix') ?? '';
-        $mimeTypeDetector = self::optionalString($options, 'mime_type_detector');
-        $visibilityHandling = self::optionalString($options, 'visibility_handling') ?? AzureBlobStorageAdapter::ON_VISIBILITY_THROW_ERROR;
-        $publicContainer = self::optionalBool($options, 'public_container') ?? false;
+        $mimeTypeDetector = self::optionalString(
+            $options,
+            'mime_type_detector',
+        );
+        $visibilityHandling =
+            self::optionalString($options, 'visibility_handling') ??
+            AzureBlobStorageAdapter::ON_VISIBILITY_THROW_ERROR;
+        $publicContainer =
+            self::optionalBool($options, 'public_container') ?? false;
 
-        $containerClientId = 'flysystem.adapter.'.$storageName.'.azure_oss_container_client';
+        $containerClientId =
+            'flysystem.adapter.'.$storageName.'.azure_oss_container_client';
         $container
-            ->setDefinition($containerClientId, new Definition(BlobContainerClient::class))
+            ->setDefinition(
+                $containerClientId,
+                new Definition(BlobContainerClient::class),
+            )
             ->setFactory([new Reference($client), 'getContainerClient'])
             ->setArgument(0, $containerName)
             ->setPublic(false);
 
         $adapterId = 'flysystem.adapter.'.$storageName;
         $container
-            ->setDefinition($adapterId, new Definition(AzureBlobStorageAdapter::class))
+            ->setDefinition(
+                $adapterId,
+                new Definition(AzureBlobStorageAdapter::class),
+            )
             ->setArgument(0, new Reference($containerClientId))
             ->setArgument(1, $prefix)
-            ->setArgument(2, $mimeTypeDetector !== null ? new Reference($mimeTypeDetector) : null)
+            ->setArgument(
+                2,
+                $mimeTypeDetector !== null
+                    ? new Reference($mimeTypeDetector)
+                    : null,
+            )
             ->setArgument(3, $visibilityHandling)
             ->setArgument(4, $publicContainer)
             ->setPublic(false);
@@ -113,13 +151,23 @@ final class AzureOssAdapterDefinitionBuilder implements AdapterDefinitionBuilder
     private static function requireString(array $options, string $key): string
     {
         if (! array_key_exists($key, $options)) {
-            throw new \InvalidArgumentException(sprintf('Missing required "%s" option for azure_oss adapter.', $key));
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Missing required "%s" option for azure_oss adapter.',
+                    $key,
+                ),
+            );
         }
 
         $value = $options[$key];
 
         if (! is_string($value)) {
-            throw new \InvalidArgumentException(sprintf('Option "%s" for azure_oss adapter must be a string.', $key));
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Option "%s" for azure_oss adapter must be a string.',
+                    $key,
+                ),
+            );
         }
 
         return $value;
@@ -137,7 +185,12 @@ final class AzureOssAdapterDefinitionBuilder implements AdapterDefinitionBuilder
         $value = $options[$key];
 
         if (! is_string($value)) {
-            throw new \InvalidArgumentException(sprintf('Option "%s" for azure_oss adapter must be a string or null.', $key));
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Option "%s" for azure_oss adapter must be a string or null.',
+                    $key,
+                ),
+            );
         }
 
         return $value;
@@ -155,7 +208,12 @@ final class AzureOssAdapterDefinitionBuilder implements AdapterDefinitionBuilder
         $value = $options[$key];
 
         if (! is_bool($value)) {
-            throw new \InvalidArgumentException(sprintf('Option "%s" for azure_oss adapter must be a boolean.', $key));
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Option "%s" for azure_oss adapter must be a boolean.',
+                    $key,
+                ),
+            );
         }
 
         return $value;

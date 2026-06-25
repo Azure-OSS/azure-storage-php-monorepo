@@ -37,7 +37,7 @@ If you have Symfony Flex installed it will register `AzureOss\Storage\BlobFlysys
 ```php
 return [
     // ...
-    AzureOss\Storage\BlobFlysystemSymfony\AzureOssFlysystemBundle::class => ['all' => true],
+    AzureOss\Storage\BlobSymfony\AzureStorageBlobFlysystemBundle::class => ['all' => true],
 ];
 ```
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\BlobFlysystemSymfony;
+namespace AzureOss\Storage\BlobSymfony;
 
 use League\FlysystemBundle\DependencyInjection\FlysystemExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -15,7 +15,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  *
  * @internal
  */
-final class AzureOssFlysystemBundle extends Bundle
+final class AzureStorageBlobFlysystemBundle extends Bundle
 {
     public function build(ContainerBuilder $container): void
     {
@@ -27,6 +27,6 @@ final class AzureOssFlysystemBundle extends Bundle
             return;
         }
 
-        $extension->addAdapterDefinitionBuilder(new AzureOssAdapterDefinitionBuilder);
+        $extension->addAdapterDefinitionBuilder(new AzureStorageBlobAdapterDefinitionBuilder);
     }
 }
