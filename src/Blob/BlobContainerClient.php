@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace AzureOss\Storage\Blob;
 
 use AzureOss\Identity\TokenCredential;
+use AzureOss\Storage\Blob\Exceptions\BlobStorageException;
 use AzureOss\Storage\Blob\Exceptions\BlobStorageExceptionDeserializer;
-use AzureOss\Storage\Blob\Exceptions\ContainerAlreadyExistsException;
-use AzureOss\Storage\Blob\Exceptions\ContainerNotFoundException;
 use AzureOss\Storage\Blob\Exceptions\InvalidBlobUriException;
 use AzureOss\Storage\Blob\Exceptions\UnableToGenerateSasException;
 use AzureOss\Storage\Blob\Helpers\BlobUriParserHelper;
@@ -16,6 +15,7 @@ use AzureOss\Storage\Blob\Models\Blob;
 use AzureOss\Storage\Blob\Models\BlobClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerProperties;
+use AzureOss\Storage\Blob\Models\BlobErrorCode;
 use AzureOss\Storage\Blob\Models\BlobPrefix;
 use AzureOss\Storage\Blob\Models\CreateContainerOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
@@ -135,7 +135,7 @@ final class BlobContainerClient
     {
         return $this->createAsync($options)
             ->otherwise(function (\Throwable $e) {
-                if ($e instanceof ContainerAlreadyExistsException) {
+                if ($e instanceof BlobStorageException && $e->errorCode === BlobErrorCode::ContainerAlreadyExists) {
                     return;
                 }
 
@@ -166,7 +166,7 @@ final class BlobContainerClient
     {
         return $this->deleteAsync()
             ->otherwise(function (\Throwable $e) {
-                if ($e instanceof ContainerNotFoundException) {
+                if ($e instanceof BlobStorageException && $e->errorCode === BlobErrorCode::ContainerNotFound) {
                     return;
                 }
 
@@ -190,7 +190,7 @@ final class BlobContainerClient
             ])
             ->then(fn () => true)
             ->otherwise(function (\Throwable $e) {
-                if ($e instanceof ContainerNotFoundException) {
+                if ($e instanceof BlobStorageException && $e->errorCode === BlobErrorCode::ContainerNotFound) {
                     return false;
                 }
 

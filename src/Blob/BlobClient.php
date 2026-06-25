@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace AzureOss\Storage\Blob;
 
 use AzureOss\Identity\TokenCredential;
-use AzureOss\Storage\Blob\Exceptions\BlobNotFoundException;
+use AzureOss\Storage\Blob\Exceptions\BlobStorageException;
 use AzureOss\Storage\Blob\Exceptions\BlobStorageExceptionDeserializer;
 use AzureOss\Storage\Blob\Exceptions\InvalidBlobUriException;
 use AzureOss\Storage\Blob\Exceptions\UnableToGenerateSasException;
@@ -17,6 +17,7 @@ use AzureOss\Storage\Blob\Models\AbortCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\BlobClientOptions;
 use AzureOss\Storage\Blob\Models\BlobCopyResult;
 use AzureOss\Storage\Blob\Models\BlobDownloadStreamingResult;
+use AzureOss\Storage\Blob\Models\BlobErrorCode;
 use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\BlobProperties;
 use AzureOss\Storage\Blob\Models\CommitBlockListOptions;
@@ -164,7 +165,7 @@ final class BlobClient
     {
         return $this->deleteAsync()->otherwise(
             function (\Throwable $e) {
-                if ($e instanceof BlobNotFoundException) {
+                if ($e instanceof BlobStorageException && $e->errorCode === BlobErrorCode::BlobNotFound) {
                     return null;
                 }
 
@@ -185,7 +186,7 @@ final class BlobClient
             ->then(fn () => true)
             ->otherwise(
                 function (\Throwable $e) {
-                    if ($e instanceof BlobNotFoundException) {
+                    if ($e instanceof BlobStorageException && $e->errorCode === BlobErrorCode::BlobNotFound) {
                         return false;
                     }
 

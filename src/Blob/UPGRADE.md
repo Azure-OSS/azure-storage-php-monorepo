@@ -12,4 +12,54 @@ composer require azure-oss/storage-blob:^2.0
 
 This release also requires `azure-oss/storage-common:^2.0`. Composer will update that dependency automatically unless your application requires `azure-oss/storage-common` directly, in which case update that constraint too.
 
-No code changes are required for this upgrade.
+### Blob service exceptions
+
+Blob service errors are now represented by `BlobStorageException` and `BlobErrorCode` instead of one exception class per Azure error code.
+
+Before:
+
+```php
+use AzureOss\Storage\Blob\Exceptions\BlobNotFoundException;
+
+try {
+    $blobClient->downloadStreaming();
+} catch (BlobNotFoundException) {
+    // Handle missing blob.
+}
+```
+
+After:
+
+```php
+use AzureOss\Storage\Blob\Exceptions\BlobStorageException;
+use AzureOss\Storage\Blob\Models\BlobErrorCode;
+
+try {
+    $blobClient->downloadStreaming();
+} catch (BlobStorageException $e) {
+    if ($e->errorCode === BlobErrorCode::BlobNotFound) {
+        // Handle missing blob.
+    }
+}
+```
+
+The exception also exposes:
+
+- `$errorCode`: a `?BlobErrorCode` enum for known Azure Blob service error codes.
+- `$errorCodeValue`: the raw Azure error-code string, including unknown future service codes.
+- `$requestId`: the Azure request id when returned by the service.
+- `$statusCode`: the HTTP status code.
+
+Removed Blob service exception classes:
+
+- `AuthenticationFailedException`
+- `AuthorizationFailedException`
+- `BlobNotFoundException`
+- `CannotVerifyCopySourceException`
+- `ContainerAlreadyExistsException`
+- `ContainerNotFoundException`
+- `InvalidBlockListException`
+- `NoPendingCopyOperationException`
+- `TagsTooLargeException`
+
+Client-side exceptions such as `InvalidBlobUriException`, `InvalidConnectionStringException`, `UnableToGenerateSasException`, and `DeserializationException` are unchanged.
