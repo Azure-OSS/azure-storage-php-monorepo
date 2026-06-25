@@ -29,9 +29,12 @@ jobs:
           - prefix: src/Queue
             repo: Azure-OSS/azure-storage-queue-php
             secret: DEPLOY_KEY_QUEUE
-          - prefix: src/Queue
+          - prefix: src/QueueLaravel
             repo: Azure-OSS/azure-storage-queue-laravel-php
             secret: DEPLOY_KEY_QUEUE_LARAVEL
+          - prefix: src/File/Share
+            repo: Azure-OSS/azure-storage-file-share-php
+            secret: DEPLOY_KEY_FILE_SHARE
     steps:
       - name: Checkout monorepo
         uses: actions/checkout@v7
