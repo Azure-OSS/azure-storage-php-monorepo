@@ -19,6 +19,7 @@ use AzureOss\Storage\Blob\Models\BlobDownloadStreamingResult;
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
 use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\BlobProperties;
+use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
 use AzureOss\Storage\Blob\Models\CommitBlockListOptions;
 use AzureOss\Storage\Blob\Models\CopyStatus;
 use AzureOss\Storage\Blob\Models\StartCopyFromUriOptions;
@@ -60,8 +61,8 @@ final class BlobClient
     ) {
         $this->containerName = BlobUriParserHelper::getContainerName($uri);
         $this->blobName = BlobUriParserHelper::getBlobName($uri);
-        $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $options->httpClientOptions);
-        $this->blockBlobClient = new BlockBlobClient($uri, $credential);
+        $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $options->httpClientOptions, $options->apiVersion);
+        $this->blockBlobClient = new BlockBlobClient($uri, $credential, new BlockBlobClientOptions($options->httpClientOptions, $options->apiVersion));
     }
 
     public function downloadStreaming(): BlobDownloadStreamingResult

@@ -37,7 +37,7 @@ final class BlobServiceClient
     ) {
         // must always include the forward slash (/) to separate the host name from the path and query portions of the URI.
         $this->uri = $uri->withPath(rtrim($uri->getPath(), '/').'/');
-        $this->client = (new ClientFactory)->create($this->uri, $credential, new BlobStorageExceptionDeserializer, $this->options->httpClientOptions);
+        $this->client = (new ClientFactory)->create($this->uri, $credential, new BlobStorageExceptionDeserializer, $this->options->httpClientOptions, $this->options->apiVersion);
     }
 
     public static function fromConnectionString(string $connectionString, BlobServiceClientOptions $options = new BlobServiceClientOptions): self
@@ -66,7 +66,7 @@ final class BlobServiceClient
         return new BlobContainerClient(
             $this->uri->withPath($this->uri->getPath().$containerName),
             $this->credential,
-            new BlobContainerClientOptions($this->options->httpClientOptions),
+            new BlobContainerClientOptions($this->options->httpClientOptions, $this->options->apiVersion),
         );
     }
 

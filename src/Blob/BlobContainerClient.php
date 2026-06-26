@@ -17,6 +17,7 @@ use AzureOss\Storage\Blob\Models\BlobContainerClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerProperties;
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
 use AzureOss\Storage\Blob\Models\BlobPrefix;
+use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
 use AzureOss\Storage\Blob\Models\CreateContainerOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
 use AzureOss\Storage\Blob\Models\PublicAccessType;
@@ -55,7 +56,7 @@ final class BlobContainerClient
         private readonly BlobContainerClientOptions $options = new BlobContainerClientOptions,
     ) {
         $this->containerName = BlobUriParserHelper::getContainerName($uri);
-        $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $this->options->httpClientOptions);
+        $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $this->options->httpClientOptions, $this->options->apiVersion);
     }
 
     public function getBlobClient(string $blobName): BlobClient
@@ -63,7 +64,7 @@ final class BlobContainerClient
         return new BlobClient(
             $this->getBlobUri($blobName),
             $this->credential,
-            new BlobClientOptions($this->options->httpClientOptions),
+            new BlobClientOptions($this->options->httpClientOptions, $this->options->apiVersion),
         );
     }
 
@@ -72,6 +73,7 @@ final class BlobContainerClient
         return new BlockBlobClient(
             $this->getBlobUri($blobName),
             $this->credential,
+            new BlockBlobClientOptions($this->options->httpClientOptions, $this->options->apiVersion),
         );
     }
 

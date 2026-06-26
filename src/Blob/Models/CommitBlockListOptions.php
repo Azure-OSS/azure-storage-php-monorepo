@@ -8,6 +8,5 @@ final class CommitBlockListOptions
 {
     public function __construct(
         public BlobHttpHeaders $httpHeaders = new BlobHttpHeaders,
-    ) {
-    }
+    ) {}
 }
