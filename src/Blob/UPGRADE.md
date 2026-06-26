@@ -61,6 +61,20 @@ $blobClient->upload($contents, new UploadBlobOptions);
 $containerClient->create(new CreateContainerOptions);
 ```
 
+The `$contentType` parameter has been removed from the `UploadBlobOptions` constructor. Set the content type on the `BlobHttpHeaders` object instead:
+
+Before:
+
+```php
+new UploadBlobOptions(contentType: 'text/plain');
+```
+
+After:
+
+```php
+new UploadBlobOptions(httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'));
+```
+
 ### Blob service exceptions
 
 Blob service errors are now represented by `BlobStorageException` and `BlobErrorCode` instead of one exception class per Azure error code.
