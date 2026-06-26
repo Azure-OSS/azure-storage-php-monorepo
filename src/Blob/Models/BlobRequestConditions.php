@@ -60,6 +60,18 @@ final class BlobRequestConditions
         ], fn ($value) => $value !== null);
     }
 
+    /**
+     * @internal
+     *
+     * @return array{x-ms-lease-id?: string}
+     */
+    public function toLeaseIdHeaders(): array
+    {
+        return array_filter([
+            'x-ms-lease-id' => $this->leaseId,
+        ], fn ($value) => $value !== null);
+    }
+
     private static function formatDate(\DateTimeInterface $date): string
     {
         return \DateTimeImmutable::createFromInterface($date)

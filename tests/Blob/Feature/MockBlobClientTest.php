@@ -7,7 +7,12 @@ namespace AzureOss\Storage\Tests\Blob\Feature;
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
 use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
+use AzureOss\Storage\Blob\Models\BlobRequestConditions;
+use AzureOss\Storage\Blob\Models\GetBlobTagsOptions;
+use AzureOss\Storage\Blob\Models\GetContainerPropertiesOptions;
+use AzureOss\Storage\Blob\Models\SetBlobTagsOptions;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
+use AzureOss\Storage\Common\Models\ETag;
 use AzureOss\Storage\Tests\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
@@ -79,6 +84,37 @@ class MockBlobClientTest extends TestCase
 
         parse_str($requests[10]->getUri()->getQuery(), $query);
         self::assertSame('blocklist', $query['comp'] ?? null);
+    }
+
+    #[Test]
+    public function upload_parallel_blocks_sends_only_lease_id_to_stage_block_and_all_conditions_to_commit(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(200),
+            new Response(501),
+        ]);
+
+        $this->blob->upload('test', new UploadBlobOptions(
+            'text/plain',
+            initialTransferSize: 0,
+            maximumTransferSize: 8_000_000,
+            conditions: new BlobRequestConditions(
+                ifMatch: new ETag('"match"'),
+                ifModifiedSince: new \DateTimeImmutable('2025-01-01 12:34:56 UTC'),
+                leaseId: '11111111-1111-4111-8111-111111111111',
+            ),
+        ));
+
+        $requests = Server::received();
+
+        self::assertCount(2, $requests);
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[0]->getHeaderLine('x-ms-lease-id'));
+        self::assertSame('', $requests[0]->getHeaderLine('If-Match'));
+        self::assertSame('', $requests[0]->getHeaderLine('If-Modified-Since'));
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[1]->getHeaderLine('x-ms-lease-id'));
+        self::assertSame('"match"', $requests[1]->getHeaderLine('If-Match'));
+        self::assertSame('Wed, 01 Jan 2025 12:34:56 GMT', $requests[1]->getHeaderLine('If-Modified-Since'));
     }
 
     #[Test]
@@ -335,5 +371,65 @@ class MockBlobClientTest extends TestCase
         self::assertSame('8000001', $requests[0]->getHeaderLine('Content-Length'));
         parse_str($requests[1]->getUri()->getQuery(), $query);
         self::assertSame('blocklist', $query['comp'] ?? null);
+    }
+
+    #[Test]
+    public function container_get_properties_sends_only_lease_id_condition(): void
+    {
+        Server::enqueue([
+            new Response(200, [
+                'Last-Modified' => 'Wed, 01 Jan 2025 12:34:56 GMT',
+                'ETag' => '"container-etag"',
+            ]),
+            new Response(501),
+        ]);
+
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $container->getProperties(new GetContainerPropertiesOptions(
+            conditions: new BlobRequestConditions(
+                ifMatch: new ETag('"match"'),
+                leaseId: '11111111-1111-4111-8111-111111111111',
+            ),
+        ));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[0]->getHeaderLine('x-ms-lease-id'));
+        self::assertSame('', $requests[0]->getHeaderLine('If-Match'));
+    }
+
+    #[Test]
+    public function tag_operations_send_conditions(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(200, body: <<<'XML'
+<Tags><TagSet><Tag><Key>foo</Key><Value>bar</Value></Tag></TagSet></Tags>
+XML),
+            new Response(501),
+        ]);
+
+        $conditions = new BlobRequestConditions(
+            ifMatch: new ETag('"match"'),
+            leaseId: '11111111-1111-4111-8111-111111111111',
+        );
+
+        $this->blob->setTags(['foo' => 'bar'], new SetBlobTagsOptions($conditions));
+        $tags = $this->blob->getTags(new GetBlobTagsOptions($conditions));
+
+        $requests = Server::received();
+
+        self::assertSame(['foo' => 'bar'], $tags);
+        self::assertCount(2, $requests);
+        foreach ($requests as $request) {
+            self::assertSame('"match"', $request->getHeaderLine('If-Match'));
+            self::assertSame('11111111-1111-4111-8111-111111111111', $request->getHeaderLine('x-ms-lease-id'));
+        }
     }
 }

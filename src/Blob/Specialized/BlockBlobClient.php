@@ -50,8 +50,6 @@ final class BlockBlobClient
 
     public function stageBlockAsync(string $base64BlockId, StreamInterface|string $content, StageBlockOptions $options = new StageBlockOptions): PromiseInterface
     {
-        $options ??= new StageBlockOptions;
-
         $stream = Utils::streamFor($content);
 
         $md5 = Utils::hash($stream, 'md5', true);
@@ -65,7 +63,7 @@ final class BlockBlobClient
                 RequestOptions::HEADERS => [
                     'Content-MD5' => HashHelper::serializeMd5($md5),
                     'Content-Length' => (string) $stream->getSize(),
-                    ...($options->conditions?->toHeaders() ?? []),
+                    ...($options->conditions?->toLeaseIdHeaders() ?? []),
                 ],
                 'body' => $content,
             ]);

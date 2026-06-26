@@ -50,4 +50,20 @@ final class BlobRequestConditionsTest extends TestCase
             'x-ms-source-lease-id' => '11111111-1111-4111-8111-111111111111',
         ], $conditions->toSourceHeaders());
     }
+
+    #[Test]
+    public function converts_conditions_to_lease_id_headers(): void
+    {
+        $conditions = new BlobRequestConditions(
+            ifMatch: new ETag('"match"'),
+            ifModifiedSince: new \DateTimeImmutable('2025-01-01 12:34:56 UTC'),
+            ifNoneMatch: ETag::all(),
+            ifUnmodifiedSince: new \DateTimeImmutable('2025-01-02 12:34:56 UTC'),
+            leaseId: '11111111-1111-4111-8111-111111111111',
+        );
+
+        self::assertSame([
+            'x-ms-lease-id' => '11111111-1111-4111-8111-111111111111',
+        ], $conditions->toLeaseIdHeaders());
+    }
 }

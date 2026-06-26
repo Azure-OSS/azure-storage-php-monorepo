@@ -20,6 +20,7 @@ use AzureOss\Storage\Blob\Models\BlobPrefix;
 use AzureOss\Storage\Blob\Models\CreateContainerOptions;
 use AzureOss\Storage\Blob\Models\DeleteContainerOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
+use AzureOss\Storage\Blob\Models\GetContainerPropertiesOptions;
 use AzureOss\Storage\Blob\Models\PublicAccessType;
 use AzureOss\Storage\Blob\Models\SetContainerMetadataOptions;
 use AzureOss\Storage\Blob\Models\TaggedBlob;
@@ -193,19 +194,20 @@ final class BlobContainerClient
             });
     }
 
-    public function getProperties(): BlobContainerProperties
+    public function getProperties(GetContainerPropertiesOptions $options = new GetContainerPropertiesOptions): BlobContainerProperties
     {
         /** @phpstan-ignore-next-line */
-        return $this->getPropertiesAsync()->wait();
+        return $this->getPropertiesAsync($options)->wait();
     }
 
-    public function getPropertiesAsync(): PromiseInterface
+    public function getPropertiesAsync(GetContainerPropertiesOptions $options = new GetContainerPropertiesOptions): PromiseInterface
     {
         return $this->client
             ->getAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'restype' => 'container',
                 ],
+                RequestOptions::HEADERS => $options->conditions?->toLeaseIdHeaders() ?? [],
             ])
             ->then(BlobContainerProperties::fromResponseHeaders(...));
     }

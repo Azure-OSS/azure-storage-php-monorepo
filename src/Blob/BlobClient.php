@@ -25,8 +25,10 @@ use AzureOss\Storage\Blob\Models\CopyStatus;
 use AzureOss\Storage\Blob\Models\DeleteBlobOptions;
 use AzureOss\Storage\Blob\Models\DownloadBlobOptions;
 use AzureOss\Storage\Blob\Models\GetBlobPropertiesOptions;
+use AzureOss\Storage\Blob\Models\GetBlobTagsOptions;
 use AzureOss\Storage\Blob\Models\SetBlobHttpHeadersOptions;
 use AzureOss\Storage\Blob\Models\SetBlobMetadataOptions;
+use AzureOss\Storage\Blob\Models\SetBlobTagsOptions;
 use AzureOss\Storage\Blob\Models\StageBlockOptions;
 use AzureOss\Storage\Blob\Models\StartCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\SyncCopyFromUriOptions;
@@ -358,8 +360,6 @@ final class BlobClient
      */
     public function syncCopyFromUriAsync(UriInterface $source, SyncCopyFromUriOptions $options = new SyncCopyFromUriOptions): PromiseInterface
     {
-        $options ??= new SyncCopyFromUriOptions;
-
         return $this->client
             ->putAsync($this->uri, [
                 'headers' => [
@@ -386,8 +386,6 @@ final class BlobClient
      */
     public function startCopyFromUriAsync(UriInterface $source, StartCopyFromUriOptions $options = new StartCopyFromUriOptions): PromiseInterface
     {
-        $options ??= new StartCopyFromUriOptions;
-
         return $this->client
             ->putAsync($this->uri, [
                 RequestOptions::HEADERS => [
@@ -509,21 +507,22 @@ final class BlobClient
     /**
      * @param  array<string>  $tags
      */
-    public function setTags(array $tags): void
+    public function setTags(array $tags, SetBlobTagsOptions $options = new SetBlobTagsOptions): void
     {
-        $this->setTagsAsync($tags)->wait();
+        $this->setTagsAsync($tags, $options)->wait();
     }
 
     /**
      * @param  array<string>  $tags
      */
-    public function setTagsAsync(array $tags): PromiseInterface
+    public function setTagsAsync(array $tags, SetBlobTagsOptions $options = new SetBlobTagsOptions): PromiseInterface
     {
         return $this->client
             ->putAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'comp' => 'tags',
                 ],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
                 RequestOptions::BODY => (new BlobTagsBody($tags))->toXml()->asXML(),
             ]);
     }
@@ -531,19 +530,20 @@ final class BlobClient
     /**
      * @return array<string>
      */
-    public function getTags(): array
+    public function getTags(GetBlobTagsOptions $options = new GetBlobTagsOptions): array
     {
         /** @phpstan-ignore-next-line */
-        return $this->getTagsAsync()->wait();
+        return $this->getTagsAsync($options)->wait();
     }
 
-    public function getTagsAsync(): PromiseInterface
+    public function getTagsAsync(GetBlobTagsOptions $options = new GetBlobTagsOptions): PromiseInterface
     {
         return $this->client
             ->getAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'comp' => 'tags',
                 ],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
             ])
             ->then(
                 fn (ResponseInterface $response) => BlobTagsBody::fromXml(new \SimpleXMLElement($response->getBody()->getContents()))->tags,
