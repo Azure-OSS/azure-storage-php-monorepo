@@ -63,6 +63,10 @@ Add a connection to `config/queue.php`:
 
 This connector supports shared key and SAS-based authentication via `connection_string`, or shared key via `account_name` + `account_key`. See the docs for configuration examples: https://azure-oss.github.io/category/storage-queue-laravel/installation
 
+## Queue metrics
+
+Azure Queue Storage only exposes an approximate total message count. Consequently, `pendingSize()` returns that approximate count, `delayedSize()` and `reservedSize()` return `0`, and `creationTimeOfOldestPendingJob()` returns `null`.
+
 ## Per-message options
 
 `pushRaw()` accepts `retry_after` and `time_to_live` options (seconds):
