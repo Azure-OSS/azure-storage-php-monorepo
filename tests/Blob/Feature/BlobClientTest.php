@@ -34,7 +34,9 @@ final class BlobClientTest extends TestCase
         $blob = $container->getBlobClient('test');
 
         $content = 'Lorem ipsum dolor sit amet';
-        $blob->upload($content, new UploadBlobOptions('text/plain'));
+        $blob->upload($content, new UploadBlobOptions(
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $result = $blob->downloadStreaming();
 
@@ -66,7 +68,9 @@ final class BlobClientTest extends TestCase
         $blob = $container->getBlobClient('test');
 
         $content = 'Lorem ipsum dolor sit amet';
-        $blob->upload($content, new UploadBlobOptions('text/plain'));
+        $blob->upload($content, new UploadBlobOptions(
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $result = $blob->getProperties();
 
@@ -183,7 +187,10 @@ final class BlobClientTest extends TestCase
         $beforeUploadContent = $file->getContents();
         $file->rewind();
 
-        $blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 2000));
+        $blob->upload($file, new UploadBlobOptions(
+            initialTransferSize: 2000,
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $properties = $blob->getProperties();
 
@@ -205,7 +212,11 @@ final class BlobClientTest extends TestCase
         $beforeUploadContent = $file->getContents();
         $file->rewind();
 
-        $blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 1000, maximumTransferSize: 100));
+        $blob->upload($file, new UploadBlobOptions(
+            initialTransferSize: 1000,
+            maximumTransferSize: 100,
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $result = $blob->downloadStreaming();
 
@@ -223,7 +234,11 @@ final class BlobClientTest extends TestCase
         $beforeUploadContent = $file->getContents();
         $file->rewind();
 
-        $blob->upload($file, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $blob->upload($file, new UploadBlobOptions(
+            initialTransferSize: 500,
+            maximumTransferSize: 100,
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $properties = $blob->getProperties();
 
@@ -261,7 +276,11 @@ final class BlobClientTest extends TestCase
         $beforeUploadContent = $file->getContents();
         $file->rewind();
 
-        $blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $blob->upload($stream, new UploadBlobOptions(
+            initialTransferSize: 500,
+            maximumTransferSize: 100,
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $properties = $blob->getProperties();
 
@@ -294,7 +313,11 @@ final class BlobClientTest extends TestCase
         $beforeUploadContent = $file->getContents();
         $file->rewind();
 
-        $blob->upload($stream, new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $blob->upload($stream, new UploadBlobOptions(
+            initialTransferSize: 500,
+            maximumTransferSize: 100,
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $properties = $blob->getProperties();
 
@@ -313,7 +336,11 @@ final class BlobClientTest extends TestCase
         $container = $this->tempContainer();
         $blob = $container->getBlobClient('test');
 
-        $blob->upload('', new UploadBlobOptions('text/plain', initialTransferSize: 500, maximumTransferSize: 100));
+        $blob->upload('', new UploadBlobOptions(
+            initialTransferSize: 500,
+            maximumTransferSize: 100,
+            httpHeaders: new BlobHttpHeaders(contentType: 'text/plain'),
+        ));
 
         $properties = $blob->getProperties();
 
