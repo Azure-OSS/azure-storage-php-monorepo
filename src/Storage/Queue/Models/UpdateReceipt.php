@@ -7,6 +7,9 @@ namespace AzureOss\Storage\Queue\Models;
 use AzureOss\Storage\Queue\Exceptions\DeserializationException;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Represents Azure Storage update receipt data.
+ */
 final class UpdateReceipt
 {
     private function __construct(

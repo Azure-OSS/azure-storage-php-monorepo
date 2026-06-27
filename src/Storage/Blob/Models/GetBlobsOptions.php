@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Configures get blobs options.
+ */
 final class GetBlobsOptions
 {
     public function __construct(

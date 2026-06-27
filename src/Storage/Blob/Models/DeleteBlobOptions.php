@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Configures delete blob options.
+ */
 final class DeleteBlobOptions
 {
     public function __construct(

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Identity;
 
+/**
+ * Indicates that a credential cannot attempt authentication in the current environment.
+ */
 class CredentialUnavailableException extends \RuntimeException
 {
     /**

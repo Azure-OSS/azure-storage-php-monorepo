@@ -7,6 +7,9 @@ namespace AzureOss\Storage\Blob\Models;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 
+/**
+ * Represents Azure Storage blob download streaming result data.
+ */
 final class BlobDownloadStreamingResult
 {
     private function __construct(

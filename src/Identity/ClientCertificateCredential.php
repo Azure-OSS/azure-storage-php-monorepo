@@ -8,8 +8,17 @@ use Http\Discovery\Exception\NotFoundException;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 
+/**
+ * Authenticates a Microsoft Entra service principal with a client certificate.
+ */
 final class ClientCertificateCredential implements TokenCredential
 {
+    /**
+     * @param  string  $tenantId  Microsoft Entra tenant ID.
+     * @param  string  $clientId  Application (client) ID.
+     * @param  string  $clientCertificatePath  Path to PEM or PKCS#12 certificate material.
+     * @param  string|null  $clientCertificatePassword  Password for encrypted certificate material.
+     */
     public function __construct(
         private readonly string $tenantId,
         private readonly string $clientId,

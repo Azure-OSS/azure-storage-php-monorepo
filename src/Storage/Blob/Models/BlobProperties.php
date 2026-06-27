@@ -12,6 +12,9 @@ use GuzzleHttp\Psr7\Uri;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Represents Azure Storage blob properties data.
+ */
 final class BlobProperties
 {
     /**

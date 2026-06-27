@@ -7,6 +7,9 @@ namespace AzureOss\Storage\Queue\Models;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Middleware\HttpClientOptions;
 
+/**
+ * Configures queue client options.
+ */
 final readonly class QueueClientOptions
 {
     public function __construct(

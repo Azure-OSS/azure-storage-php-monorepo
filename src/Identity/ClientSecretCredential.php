@@ -8,8 +8,16 @@ use Http\Discovery\Exception\NotFoundException;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 
+/**
+ * Authenticates a Microsoft Entra service principal with a client secret.
+ */
 final class ClientSecretCredential implements TokenCredential
 {
+    /**
+     * @param  string  $tenantId  Microsoft Entra tenant ID.
+     * @param  string  $clientId  Application (client) ID.
+     * @param  string  $clientSecret  Application client secret.
+     */
     public function __construct(
         private readonly string $tenantId,
         private readonly string $clientId,

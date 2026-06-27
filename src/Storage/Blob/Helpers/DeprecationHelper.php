@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Helpers;
 
+/**
+ * Provides reusable deprecation helper operations.
+ */
 class DeprecationHelper
 {
     public static function constructorWillBePrivate(string $className, string $version): void

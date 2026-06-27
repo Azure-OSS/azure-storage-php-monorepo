@@ -6,6 +6,9 @@ namespace AzureOss\Storage\Queue\Exceptions;
 
 use AzureOss\Storage\Queue\Models\QueueErrorCode;
 
+/**
+ * Represents an error response returned by Azure Queue Storage.
+ */
 class QueueStorageException extends \RuntimeException
 {
     public function __construct(

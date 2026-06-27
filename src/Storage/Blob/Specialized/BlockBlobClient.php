@@ -23,6 +23,9 @@ use GuzzleHttp\RequestOptions;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Provides staged upload operations for an Azure Storage block blob.
+ */
 final class BlockBlobClient
 {
     private readonly Client $client;
@@ -44,11 +47,13 @@ final class BlockBlobClient
         $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $options->httpClientOptions, $options->apiVersion);
     }
 
+    /** Stages a block for later inclusion in the blob's committed block list. */
     public function stageBlock(string $base64BlockId, StreamInterface|string $content, StageBlockOptions $options = new StageBlockOptions): void
     {
         $this->stageBlockAsync($base64BlockId, $content, $options)->wait();
     }
 
+    /** Asynchronously stages a block for later commitment. */
     public function stageBlockAsync(string $base64BlockId, StreamInterface|string $content, StageBlockOptions $options = new StageBlockOptions): PromiseInterface
     {
         $stream = Utils::streamFor($content);
@@ -74,6 +79,8 @@ final class BlockBlobClient
     }
 
     /**
+     * Commits an ordered list of staged block IDs as the blob's content.
+     *
      * @param  string[]  $base64BlockIds
      */
     public function commitBlockList(array $base64BlockIds, CommitBlockListOptions $options = new CommitBlockListOptions): void
@@ -82,6 +89,8 @@ final class BlockBlobClient
     }
 
     /**
+     * Asynchronously commits an ordered list of staged block IDs.
+     *
      * @param  string[]  $base64BlockIds
      */
     public function commitBlockListAsync(array $base64BlockIds, CommitBlockListOptions $options = new CommitBlockListOptions): PromiseInterface

@@ -9,6 +9,9 @@ use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use GuzzleHttp\Psr7\Query;
 
+/**
+ * Builds an Azure Storage account shared access signature (SAS).
+ */
 final class AccountSasBuilder
 {
     private string $version;
@@ -29,11 +32,13 @@ final class AccountSasBuilder
 
     private ?string $encryptionScope = null;
 
+    /** Creates an empty account SAS builder. */
     public static function new(): self
     {
         return new self;
     }
 
+    /** Sets the Storage service version signed by the SAS. */
     public function setVersion(string $version): AccountSasBuilder
     {
         $this->version = $version;
@@ -41,6 +46,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Sets the storage services accessible through the SAS. */
     public function setServices(string|AccountSasServices $services): AccountSasBuilder
     {
         $this->services = (string) $services;
@@ -48,6 +54,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Sets the service, container, and object resource types accessible through the SAS. */
     public function setResourceTypes(string|AccountSasResourceTypes $resourceTypes): AccountSasBuilder
     {
         $this->resourceTypes = (string) $resourceTypes;
@@ -55,6 +62,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Sets the operations permitted by the SAS. */
     public function setPermissions(string|AccountSasPermissions $permissions): AccountSasBuilder
     {
         $this->permissions = (string) $permissions;
@@ -62,6 +70,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Sets the earliest instant at which the SAS is valid. */
     public function setStartsOn(\DateTimeInterface $startsOn): AccountSasBuilder
     {
         $this->startsOn = $startsOn;
@@ -69,6 +78,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Sets the instant at which the SAS expires. */
     public function setExpiresOn(\DateTimeInterface $expiresOn): AccountSasBuilder
     {
         $this->expiresOn = $expiresOn;
@@ -76,6 +86,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Restricts requests to the specified source IP address or range. */
     public function setIpRange(SasIpRange $ipRange): AccountSasBuilder
     {
         $this->ipRange = $ipRange;
@@ -83,6 +94,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Restricts requests to HTTPS, or permits both HTTPS and HTTP. */
     public function setProtocol(SasProtocol $protocol): AccountSasBuilder
     {
         $this->protocol = $protocol;
@@ -90,6 +102,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Sets the encryption scope required for requests authorized by the SAS. */
     public function setEncryptionScope(string $encryptionScope): AccountSasBuilder
     {
         $this->encryptionScope = $encryptionScope;
@@ -97,6 +110,7 @@ final class AccountSasBuilder
         return $this;
     }
 
+    /** Signs and returns the account SAS query string without a leading question mark. */
     public function build(StorageSharedKeyCredential $sharedKeyCredential): string
     {
         $signedStart = $this->startsOn !== null ? DateHelper::formatAs8601Zulu($this->startsOn) : null;

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Configures upload blob options.
+ */
 final class UploadBlobOptions
 {
     public readonly BlobHttpHeaders $httpHeaders;

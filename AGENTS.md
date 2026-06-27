@@ -158,6 +158,8 @@ When editing a package, start by checking its matching test directory. Feature t
 
 ## Changelogs and Documentation
 
+- Add useful PHPDoc docblocks for all new functionality and whenever existing functionality is updated. Document public classes, methods, properties, parameters, return shapes, exceptions, asynchronous behavior, and non-obvious Azure service semantics where applicable; avoid comments that merely repeat the type signature.
+- Use the terminology and behavioral descriptions from the [Azure Storage client libraries for .NET](https://learn.microsoft.com/en-us/dotnet/api/overview/azure/storage?view=azure-dotnet) as the baseline for Storage API docblocks, adapted to the PHP API and its actual behavior.
 - Update the relevant package README and/or pages under `docs/docs/` whenever a change affects public APIs, behavior, configuration, authentication, setup, or integration.
 - Update the affected package's `CHANGELOG.md` under `Unreleased` whenever package code changes. Replace any "No user-facing changes" placeholder with an appropriate structured section.
 - Update the affected package's `UPGRADE.md` whenever a change is breaking, including clear migration instructions and before-and-after examples where useful.

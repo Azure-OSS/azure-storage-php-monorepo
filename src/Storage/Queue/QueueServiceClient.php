@@ -12,8 +12,16 @@ use AzureOss\Storage\Queue\Models\QueueClientOptions;
 use AzureOss\Storage\Queue\Models\QueueServiceClientOptions;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Provides service-level access to queues in an Azure Storage account.
+ */
 final class QueueServiceClient
 {
+    /**
+     * @param  UriInterface  $uri  Queue service endpoint, including any SAS query string.
+     * @param  StorageSharedKeyCredential|TokenCredential|null  $credential  Credential used to authorize requests, or null for SAS access.
+     * @param  QueueServiceClientOptions  $options  Client transport and service-version options.
+     */
     public function __construct(
         public UriInterface $uri,
         public readonly StorageSharedKeyCredential|TokenCredential|null $credential = null,
@@ -23,6 +31,11 @@ final class QueueServiceClient
         $this->uri = $uri->withPath(rtrim($uri->getPath(), '/').'/');
     }
 
+    /**
+     * Creates a client from an Azure Storage connection string.
+     *
+     * @throws InvalidConnectionStringException When the connection string does not contain a usable Queue endpoint and credential.
+     */
     public static function fromConnectionString(string $connectionString, QueueServiceClientOptions $options = new QueueServiceClientOptions): self
     {
         $uri = ConnectionStringHelper::getQueueEndpoint($connectionString);
@@ -44,6 +57,9 @@ final class QueueServiceClient
         throw new InvalidConnectionStringException;
     }
 
+    /**
+     * Creates a client for the named queue without making a service request.
+     */
     public function getQueueClient(string $queueName): QueueClient
     {
         return new QueueClient(

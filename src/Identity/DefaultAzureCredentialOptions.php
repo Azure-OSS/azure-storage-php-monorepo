@@ -8,6 +8,9 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 
+/**
+ * Configures which credential sources participate in {@see DefaultAzureCredential}.
+ */
 final class DefaultAzureCredentialOptions extends TokenCredentialOptions
 {
     public function __construct(

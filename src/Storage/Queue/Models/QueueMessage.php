@@ -6,6 +6,9 @@ namespace AzureOss\Storage\Queue\Models;
 
 use AzureOss\Storage\Queue\Exceptions\DeserializationException;
 
+/**
+ * Represents Azure Storage queue message data.
+ */
 final class QueueMessage
 {
     private function __construct(

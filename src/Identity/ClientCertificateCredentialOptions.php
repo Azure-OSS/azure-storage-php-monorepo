@@ -8,6 +8,9 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 
+/**
+ * Configures client certificate credential options.
+ */
 final class ClientCertificateCredentialOptions extends TokenCredentialOptions
 {
     public function __construct(

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Models;
 
+/**
+ * Represents an HTTP entity tag used by Azure Storage request conditions.
+ */
 final class ETag
 {
     public function __construct(

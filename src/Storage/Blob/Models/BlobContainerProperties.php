@@ -9,6 +9,9 @@ use AzureOss\Storage\Blob\Helpers\MetadataHelper;
 use AzureOss\Storage\Common\Models\ETag;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Represents Azure Storage blob container properties data.
+ */
 final class BlobContainerProperties
 {
     /**

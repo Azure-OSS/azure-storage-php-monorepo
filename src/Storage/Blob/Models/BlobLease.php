@@ -8,6 +8,9 @@ use AzureOss\Storage\Blob\Helpers\DateHelper;
 use AzureOss\Storage\Common\Models\ETag;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Represents Azure Storage blob lease data.
+ */
 final class BlobLease
 {
     public function __construct(

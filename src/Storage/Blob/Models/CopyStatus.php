@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Defines the supported copy status values.
+ */
 enum CopyStatus: string
 {
     case PENDING = 'pending';

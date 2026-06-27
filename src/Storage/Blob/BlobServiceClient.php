@@ -26,10 +26,21 @@ use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\RequestOptions;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Provides service-level operations for an Azure Blob Storage account.
+ *
+ * Create this client from a service endpoint and credential, or use
+ * {@see self::fromConnectionString()} when a storage connection string is available.
+ */
 final class BlobServiceClient
 {
     private readonly Client $client;
 
+    /**
+     * @param  UriInterface  $uri  Blob service endpoint, including any SAS query string.
+     * @param  StorageSharedKeyCredential|TokenCredential|null  $credential  Credential used to authorize requests, or null for anonymous/SAS access.
+     * @param  BlobServiceClientOptions  $options  Client transport and service-version options.
+     */
     public function __construct(
         public UriInterface $uri,
         public readonly StorageSharedKeyCredential|TokenCredential|null $credential = null,
@@ -40,6 +51,11 @@ final class BlobServiceClient
         $this->client = (new ClientFactory)->create($this->uri, $credential, new BlobStorageExceptionDeserializer, $this->options->httpClientOptions, $this->options->apiVersion);
     }
 
+    /**
+     * Creates a client from an Azure Storage connection string.
+     *
+     * @throws InvalidConnectionStringException When the connection string does not contain a usable Blob endpoint and credential.
+     */
     public static function fromConnectionString(string $connectionString, BlobServiceClientOptions $options = new BlobServiceClientOptions): self
     {
         $uri = ConnectionStringHelper::getBlobEndpoint($connectionString);
@@ -61,6 +77,9 @@ final class BlobServiceClient
         throw new InvalidConnectionStringException;
     }
 
+    /**
+     * Creates a client for the named blob container without making a service request.
+     */
     public function getContainerClient(string $containerName): BlobContainerClient
     {
         return new BlobContainerClient(
@@ -71,6 +90,9 @@ final class BlobServiceClient
     }
 
     /**
+     * Lists containers in the storage account, following continuation markers automatically.
+     *
+     * @param  string|null  $prefix  Optional prefix used to filter container names.
      * @return \Generator<BlobContainer>
      */
     public function getBlobContainers(?string $prefix = null): \Generator
@@ -99,6 +121,8 @@ final class BlobServiceClient
     }
 
     /**
+     * Finds blobs across the storage account whose index tags match the SQL expression.
+     *
      * @return \Generator<TaggedBlob>
      */
     public function findBlobsByTag(string $tagFilterSqlExpression): \Generator
@@ -127,11 +151,19 @@ final class BlobServiceClient
         }
     }
 
+    /**
+     * Returns whether this client has a shared-key credential capable of signing an account SAS.
+     */
     public function canGenerateAccountSasUri(): bool
     {
         return $this->credential instanceof StorageSharedKeyCredential;
     }
 
+    /**
+     * Generates a Blob service URI containing a signed account SAS query string.
+     *
+     * @throws UnableToGenerateSasException When the client does not have a shared-key credential.
+     */
     public function generateAccountSasUri(AccountSasBuilder $accountSasBuilder): UriInterface
     {
         if (! $this->credential instanceof StorageSharedKeyCredential) {

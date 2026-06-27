@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Identity;
 
+/**
+ * Collects multiple failures produced while trying a credential chain.
+ */
 final class AggregateException extends \RuntimeException
 {
     /**

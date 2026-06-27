@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Represents Azure Storage blob http headers data.
+ */
 final class BlobHttpHeaders
 {
     public function __construct(
