@@ -2,4 +2,6 @@
 
 ## Unreleased
 
-No user-facing changes since `1.0.1`.
+### Added
+
+- Support for Laravel 13's queue size metrics contract.

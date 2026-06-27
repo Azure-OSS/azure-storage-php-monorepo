@@ -41,6 +41,30 @@ final class AzureStorageQueue extends Queue implements ClearableQueue, QueueCont
         return $this->getQueueClient($this->getQueue($queue))->getProperties()->approximateMessagesCount;
     }
 
+    public function pendingSize($queue = null): int
+    {
+        // Azure only exposes an approximate total message count.
+        return $this->size($queue);
+    }
+
+    public function delayedSize($queue = null): int
+    {
+        // Azure does not expose a delayed message count.
+        return 0;
+    }
+
+    public function reservedSize($queue = null): int
+    {
+        // Azure does not expose a reserved message count.
+        return 0;
+    }
+
+    public function creationTimeOfOldestPendingJob($queue = null): ?int
+    {
+        // Azure does not expose the oldest pending message's creation time.
+        return null;
+    }
+
     public function push($job, $data = '', $queue = null)
     {
         $queueName = $this->getQueue($queue);

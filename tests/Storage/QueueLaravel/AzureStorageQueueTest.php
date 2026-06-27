@@ -131,6 +131,11 @@ final class AzureStorageQueueTest extends TestCase
 
         self::assertEventually(fn () => $queue->size($queueName) === 2, maxAttempts: 10, delayMs: 100);
 
+        self::assertSame(2, $queue->pendingSize($queueName));
+        self::assertSame(0, $queue->delayedSize($queueName));
+        self::assertSame(0, $queue->reservedSize($queueName));
+        self::assertNull($queue->creationTimeOfOldestPendingJob($queueName));
+
         self::assertSame(2, $queue->clear($queueName));
         self::assertNull($queue->pop($queueName));
     }
