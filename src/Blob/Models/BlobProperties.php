@@ -7,6 +7,7 @@ namespace AzureOss\Storage\Blob\Models;
 use AzureOss\Storage\Blob\Helpers\DateHelper;
 use AzureOss\Storage\Blob\Helpers\HashHelper;
 use AzureOss\Storage\Blob\Helpers\MetadataHelper;
+use AzureOss\Storage\Common\Models\ETag;
 use GuzzleHttp\Psr7\Uri;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
@@ -31,6 +32,7 @@ final class BlobProperties
         public readonly string $contentDisposition = '',
         public readonly string $contentLanguage = '',
         public readonly string $contentEncoding = '',
+        public readonly ?ETag $eTag = null,
     ) {}
 
     public static function fromResponseHeaders(ResponseInterface $response): self
@@ -50,11 +52,14 @@ final class BlobProperties
             $response->getHeaderLine('Content-Disposition'),
             $response->getHeaderLine('Content-Language'),
             $response->getHeaderLine('x-encoded-content-encoding'),
+            $response->hasHeader('ETag') ? new ETag($response->getHeaderLine('ETag')) : null,
         );
     }
 
     public static function fromXml(\SimpleXMLElement $xml): self
     {
+        $eTag = (string) $xml->Etag !== '' ? (string) $xml->Etag : (string) $xml->ETag;
+
         return new self(
             DateHelper::deserializeDateRfc1123Date((string) $xml->{'Last-Modified'}),
             (int) $xml->{'Content-Length'},
@@ -70,6 +75,7 @@ final class BlobProperties
             (string) $xml->{'Content-Disposition'},
             (string) $xml->{'Content-Language'},
             (string) $xml->{'Content-Encoding'},
+            $eTag !== '' ? new ETag($eTag) : null,
         );
     }
 }

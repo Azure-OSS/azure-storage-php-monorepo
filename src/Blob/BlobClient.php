@@ -18,15 +18,27 @@ use AzureOss\Storage\Blob\Models\BlobCopyResult;
 use AzureOss\Storage\Blob\Models\BlobDownloadStreamingResult;
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
 use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
+use AzureOss\Storage\Blob\Models\BlobLeaseClientOptions;
 use AzureOss\Storage\Blob\Models\BlobProperties;
+use AzureOss\Storage\Blob\Models\BlobRequestConditions;
 use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
 use AzureOss\Storage\Blob\Models\CommitBlockListOptions;
 use AzureOss\Storage\Blob\Models\CopyStatus;
+use AzureOss\Storage\Blob\Models\DeleteBlobOptions;
+use AzureOss\Storage\Blob\Models\DownloadBlobOptions;
+use AzureOss\Storage\Blob\Models\GetBlobPropertiesOptions;
+use AzureOss\Storage\Blob\Models\GetBlobTagsOptions;
+use AzureOss\Storage\Blob\Models\RequestConditionSet;
+use AzureOss\Storage\Blob\Models\SetBlobHttpHeadersOptions;
+use AzureOss\Storage\Blob\Models\SetBlobMetadataOptions;
+use AzureOss\Storage\Blob\Models\SetBlobTagsOptions;
+use AzureOss\Storage\Blob\Models\StageBlockOptions;
 use AzureOss\Storage\Blob\Models\StartCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\SyncCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
 use AzureOss\Storage\Blob\Requests\BlobTagsBody;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
+use AzureOss\Storage\Blob\Specialized\BlobLeaseClient;
 use AzureOss\Storage\Blob\Specialized\BlockBlobClient;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Helpers\StorageUriParserHelper;
@@ -58,7 +70,7 @@ final class BlobClient
     public function __construct(
         public readonly UriInterface $uri,
         public readonly StorageSharedKeyCredential|TokenCredential|null $credential = null,
-        BlobClientOptions $options = new BlobClientOptions,
+        private readonly BlobClientOptions $options = new BlobClientOptions,
     ) {
         $this->containerName = BlobUriParserHelper::getContainerName($uri);
         $this->blobName = BlobUriParserHelper::getBlobName($uri);
@@ -66,53 +78,69 @@ final class BlobClient
         $this->blockBlobClient = new BlockBlobClient($uri, $credential, new BlockBlobClientOptions($options->httpClientOptions, $options->apiVersion));
     }
 
-    public function downloadStreaming(): BlobDownloadStreamingResult
+    public function downloadStreaming(DownloadBlobOptions $options = new DownloadBlobOptions): BlobDownloadStreamingResult
     {
         /** @phpstan-ignore-next-line */
-        return $this->downloadStreamingAsync()->wait();
+        return $this->downloadStreamingAsync($options)->wait();
     }
 
-    public function downloadStreamingAsync(): PromiseInterface
+    public function downloadStreamingAsync(DownloadBlobOptions $options = new DownloadBlobOptions): PromiseInterface
     {
         return $this->client
             ->getAsync($this->uri, [
                 RequestOptions::STREAM => true,
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::downloadStreaming', RequestConditionSet::ALL) ?? [],
             ])
             ->then(BlobDownloadStreamingResult::fromResponse(...));
     }
 
-    public function getProperties(): BlobProperties
+    public function getProperties(GetBlobPropertiesOptions $options = new GetBlobPropertiesOptions): BlobProperties
     {
         /** @phpstan-ignore-next-line */
-        return $this->getPropertiesAsync()->wait();
+        return $this->getPropertiesAsync($options)->wait();
     }
 
-    public function getPropertiesAsync(): PromiseInterface
+    public function getPropertiesAsync(GetBlobPropertiesOptions $options = new GetBlobPropertiesOptions): PromiseInterface
     {
         return $this->client
-            ->headAsync($this->uri)
+            ->headAsync($this->uri, [
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::getProperties', RequestConditionSet::ALL) ?? [],
+            ])
             ->then(BlobProperties::fromResponseHeaders(...));
     }
 
-    /**
-     * @param  array<string>  $metadata
-     */
-    public function setMetadata(array $metadata): void
+    public function getBlobLeaseClient(?string $leaseId = null): BlobLeaseClient
     {
-        $this->setMetadataAsync($metadata)->wait();
+        return new BlobLeaseClient(
+            $this->uri,
+            $this->credential,
+            $leaseId,
+            options: new BlobLeaseClientOptions($this->options->httpClientOptions, $this->options->apiVersion),
+        );
     }
 
     /**
      * @param  array<string>  $metadata
      */
-    public function setMetadataAsync(array $metadata): PromiseInterface
+    public function setMetadata(array $metadata, SetBlobMetadataOptions $options = new SetBlobMetadataOptions): void
+    {
+        $this->setMetadataAsync($metadata, $options)->wait();
+    }
+
+    /**
+     * @param  array<string>  $metadata
+     */
+    public function setMetadataAsync(array $metadata, SetBlobMetadataOptions $options = new SetBlobMetadataOptions): PromiseInterface
     {
         return $this->client
             ->putAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'comp' => 'metadata',
                 ],
-                RequestOptions::HEADERS => MetadataHelper::metadataToHeaders($metadata),
+                RequestOptions::HEADERS => [
+                    ...MetadataHelper::metadataToHeaders($metadata),
+                    ...($options->conditions?->toHeaders('BlobClient::setMetadata', RequestConditionSet::ALL) ?? []),
+                ],
             ]);
     }
 
@@ -121,40 +149,45 @@ final class BlobClient
      *
      * @see https://learn.microsoft.com/en-us/rest/api/storageservices/set-blob-properties
      */
-    public function setHttpHeaders(BlobHttpHeaders $httpHeaders): void
+    public function setHttpHeaders(BlobHttpHeaders $httpHeaders, SetBlobHttpHeadersOptions $options = new SetBlobHttpHeadersOptions): void
     {
-        $this->setHttpHeadersAsync($httpHeaders)->wait();
+        $this->setHttpHeadersAsync($httpHeaders, $options)->wait();
     }
 
     /**
      * @see https://learn.microsoft.com/en-us/rest/api/storageservices/set-blob-properties
      */
-    public function setHttpHeadersAsync(BlobHttpHeaders $httpHeaders): PromiseInterface
+    public function setHttpHeadersAsync(BlobHttpHeaders $httpHeaders, SetBlobHttpHeadersOptions $options = new SetBlobHttpHeadersOptions): PromiseInterface
     {
         return $this->client->putAsync($this->uri, [
             RequestOptions::QUERY => ['comp' => 'properties'],
-            RequestOptions::HEADERS => $httpHeaders->toArray(),
+            RequestOptions::HEADERS => [
+                ...$httpHeaders->toArray(),
+                ...($options->conditions?->toHeaders('BlobClient::setHttpHeaders', RequestConditionSet::ALL) ?? []),
+            ],
         ]);
     }
 
-    public function delete(): void
+    public function delete(DeleteBlobOptions $options = new DeleteBlobOptions): void
     {
-        $this->deleteAsync()->wait();
+        $this->deleteAsync($options)->wait();
     }
 
-    public function deleteAsync(): PromiseInterface
+    public function deleteAsync(DeleteBlobOptions $options = new DeleteBlobOptions): PromiseInterface
     {
-        return $this->client->deleteAsync($this->uri);
+        return $this->client->deleteAsync($this->uri, [
+            RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::delete', RequestConditionSet::ALL) ?? [],
+        ]);
     }
 
-    public function deleteIfExists(): void
+    public function deleteIfExists(DeleteBlobOptions $options = new DeleteBlobOptions): void
     {
-        $this->deleteIfExistsAsync()->wait();
+        $this->deleteIfExistsAsync($options)->wait();
     }
 
-    public function deleteIfExistsAsync(): PromiseInterface
+    public function deleteIfExistsAsync(DeleteBlobOptions $options = new DeleteBlobOptions): PromiseInterface
     {
-        return $this->deleteAsync()->otherwise(
+        return $this->deleteAsync($options)->otherwise(
             function (\Throwable $e) {
                 if ($e instanceof BlobStorageException && $e->errorCode === BlobErrorCode::BlobNotFound) {
                     return null;
@@ -208,13 +241,14 @@ final class BlobClient
                 $options->maximumConcurrency,
                 $maximumTransferSize,
                 $options->httpHeaders,
+                $options->conditions,
             );
         } else {
-            return $this->uploadViaPutBlobAsync($content, $options->httpHeaders);
+            return $this->uploadViaPutBlobAsync($content, $options->httpHeaders, $options->conditions);
         }
     }
 
-    private function uploadViaPutBlobAsync(StreamInterface $content, BlobHttpHeaders $httpHeaders): PromiseInterface
+    private function uploadViaPutBlobAsync(StreamInterface $content, BlobHttpHeaders $httpHeaders, ?BlobRequestConditions $conditions): PromiseInterface
     {
         return $this->client
             ->putAsync($this->uri, [
@@ -222,17 +256,22 @@ final class BlobClient
                     'x-ms-blob-type' => 'BlockBlob',
                     'Content-Length' => $content->getSize() === null ? null : (string) $content->getSize(),
                     ...$httpHeaders->toArray(),
+                    ...($conditions?->toHeaders('BlobClient::upload', RequestConditionSet::ALL) ?? []),
                 ], fn ($value) => $value !== null),
                 RequestOptions::BODY => $content,
             ]);
     }
 
-    private function uploadViaBlockBlobAsync(StreamInterface $content, int $maximumConcurrency, int $maximumTransferSize, BlobHttpHeaders $httpHeaders): PromiseInterface
+    private function uploadViaBlockBlobAsync(StreamInterface $content, int $maximumConcurrency, int $maximumTransferSize, BlobHttpHeaders $httpHeaders, ?BlobRequestConditions $conditions): PromiseInterface
     {
         $blockIds = [];
         $contextMD5 = $httpHeaders->contentHash === '' ? hash_init('md5') : null;
 
-        $putBlockRequestGenerator = function () use (&$content, &$blockIds, &$contextMD5, $maximumTransferSize): \Generator {
+        $stageBlockConditions = $conditions?->leaseId === null
+            ? null
+            : new BlobRequestConditions(leaseId: $conditions->leaseId);
+
+        $putBlockRequestGenerator = function () use (&$content, &$blockIds, &$contextMD5, $maximumTransferSize, $stageBlockConditions): \Generator {
             while (true) {
                 $blockContent = StreamUtils::streamFor();
                 $remaining = $maximumTransferSize;
@@ -262,7 +301,11 @@ final class BlobClient
                 $blockId = $this->getNextBlockId($blockIds);
                 $blockIds[] = $blockId;
 
-                yield fn () => $this->blockBlobClient->stageBlockAsync($blockId, $blockContent);
+                yield fn () => $this->blockBlobClient->stageBlockAsync(
+                    $blockId,
+                    $blockContent,
+                    new StageBlockOptions(conditions: $stageBlockConditions),
+                );
             }
         };
 
@@ -275,7 +318,7 @@ final class BlobClient
         return $pool
             ->promise()
             ->then(
-                function () use (&$blockIds, $httpHeaders, &$contextMD5) {
+                function () use (&$blockIds, $httpHeaders, &$contextMD5, $conditions) {
                     $commitHeaders = clone $httpHeaders;
 
                     if ($contextMD5 !== null && $commitHeaders->contentHash === '') {
@@ -284,7 +327,10 @@ final class BlobClient
 
                     return $this->blockBlobClient->commitBlockListAsync(
                         $blockIds,
-                        new CommitBlockListOptions(httpHeaders: $commitHeaders),
+                        new CommitBlockListOptions(
+                            httpHeaders: $commitHeaders,
+                            conditions: $conditions,
+                        ),
                     );
                 },
             );
@@ -332,6 +378,15 @@ final class BlobClient
                 'headers' => [
                     'x-ms-copy-source' => (string) $source,
                     'x-ms-requires-sync' => 'true',
+                    ...($options->destinationConditions?->toHeaders(
+                        'BlobClient::syncCopyFromUri destination',
+                        RequestConditionSet::ALL,
+                    ) ?? []),
+                    ...($options->sourceConditions?->toHeaders(
+                        'BlobClient::syncCopyFromUri source',
+                        RequestConditionSet::HTTP_ONLY,
+                        prefix: 'x-ms-source-',
+                    ) ?? []),
                 ],
             ])
             ->then(BlobCopyResult::fromResponse(...));
@@ -355,6 +410,15 @@ final class BlobClient
             ->putAsync($this->uri, [
                 RequestOptions::HEADERS => [
                     'x-ms-copy-source' => (string) $source,
+                    ...($options->destinationConditions?->toHeaders(
+                        'BlobClient::startCopyFromUri destination',
+                        RequestConditionSet::ALL,
+                    ) ?? []),
+                    ...($options->sourceConditions?->toHeaders(
+                        'BlobClient::startCopyFromUri source',
+                        RequestConditionSet::HTTP_ONLY,
+                        prefix: 'x-ms-source-',
+                    ) ?? []),
                 ],
             ])
             ->then(BlobCopyResult::fromResponse(...));
@@ -381,6 +445,10 @@ final class BlobClient
                 ],
                 'headers' => [
                     'x-ms-copy-action' => 'abort',
+                    ...($options->conditions?->toHeaders(
+                        'BlobClient::abortCopyFromUri',
+                        RequestConditionSet::LEASE_ONLY,
+                    ) ?? []),
                 ],
             ]);
     }
@@ -470,21 +538,22 @@ final class BlobClient
     /**
      * @param  array<string>  $tags
      */
-    public function setTags(array $tags): void
+    public function setTags(array $tags, SetBlobTagsOptions $options = new SetBlobTagsOptions): void
     {
-        $this->setTagsAsync($tags)->wait();
+        $this->setTagsAsync($tags, $options)->wait();
     }
 
     /**
      * @param  array<string>  $tags
      */
-    public function setTagsAsync(array $tags): PromiseInterface
+    public function setTagsAsync(array $tags, SetBlobTagsOptions $options = new SetBlobTagsOptions): PromiseInterface
     {
         return $this->client
             ->putAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'comp' => 'tags',
                 ],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::setTags', RequestConditionSet::ALL) ?? [],
                 RequestOptions::BODY => (new BlobTagsBody($tags))->toXml()->asXML(),
             ]);
     }
@@ -492,19 +561,20 @@ final class BlobClient
     /**
      * @return array<string>
      */
-    public function getTags(): array
+    public function getTags(GetBlobTagsOptions $options = new GetBlobTagsOptions): array
     {
         /** @phpstan-ignore-next-line */
-        return $this->getTagsAsync()->wait();
+        return $this->getTagsAsync($options)->wait();
     }
 
-    public function getTagsAsync(): PromiseInterface
+    public function getTagsAsync(GetBlobTagsOptions $options = new GetBlobTagsOptions): PromiseInterface
     {
         return $this->client
             ->getAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'comp' => 'tags',
                 ],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::getTags', RequestConditionSet::ALL) ?? [],
             ])
             ->then(
                 fn (ResponseInterface $response) => BlobTagsBody::fromXml(new \SimpleXMLElement($response->getBody()->getContents()))->tags,

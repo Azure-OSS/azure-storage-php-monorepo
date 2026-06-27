@@ -11,6 +11,7 @@ use AzureOss\Storage\Blob\Helpers\BlobUriParserHelper;
 use AzureOss\Storage\Blob\Helpers\HashHelper;
 use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
 use AzureOss\Storage\Blob\Models\CommitBlockListOptions;
+use AzureOss\Storage\Blob\Models\RequestConditionSet;
 use AzureOss\Storage\Blob\Models\StageBlockOptions;
 use AzureOss\Storage\Blob\Requests\PutBlockRequestBody;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
@@ -63,6 +64,10 @@ final class BlockBlobClient
                 RequestOptions::HEADERS => [
                     'Content-MD5' => HashHelper::serializeMd5($md5),
                     'Content-Length' => (string) $stream->getSize(),
+                    ...($options->conditions?->toHeaders(
+                        'BlockBlobClient::stageBlock',
+                        RequestConditionSet::LEASE_ONLY,
+                    ) ?? []),
                 ],
                 'body' => $content,
             ]);
@@ -86,7 +91,10 @@ final class BlockBlobClient
                 RequestOptions::QUERY => [
                     'comp' => 'blocklist',
                 ],
-                RequestOptions::HEADERS => $options->httpHeaders->toArray(),
+                RequestOptions::HEADERS => [
+                    ...$options->httpHeaders->toArray(),
+                    ...($options->conditions?->toHeaders('BlockBlobClient::commitBlockList', RequestConditionSet::ALL) ?? []),
+                ],
                 'body' => (new PutBlockRequestBody($base64BlockIds))->toXml()->asXML(),
             ]);
     }

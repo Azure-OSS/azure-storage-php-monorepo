@@ -16,15 +16,21 @@ use AzureOss\Storage\Blob\Models\BlobClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerProperties;
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
+use AzureOss\Storage\Blob\Models\BlobLeaseClientOptions;
 use AzureOss\Storage\Blob\Models\BlobPrefix;
 use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
 use AzureOss\Storage\Blob\Models\CreateContainerOptions;
+use AzureOss\Storage\Blob\Models\DeleteContainerOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
+use AzureOss\Storage\Blob\Models\GetContainerPropertiesOptions;
 use AzureOss\Storage\Blob\Models\PublicAccessType;
+use AzureOss\Storage\Blob\Models\RequestConditionSet;
+use AzureOss\Storage\Blob\Models\SetContainerMetadataOptions;
 use AzureOss\Storage\Blob\Models\TaggedBlob;
 use AzureOss\Storage\Blob\Responses\FindBlobsByTagBody;
 use AzureOss\Storage\Blob\Responses\ListBlobsResponseBody;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
+use AzureOss\Storage\Blob\Specialized\BlobLeaseClient;
 use AzureOss\Storage\Blob\Specialized\BlockBlobClient;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Helpers\StorageUriParserHelper;
@@ -75,6 +81,17 @@ final class BlobContainerClient
             $this->getBlobUri($blobName),
             $this->credential,
             new BlockBlobClientOptions($this->options->httpClientOptions, $this->options->apiVersion),
+        );
+    }
+
+    public function getBlobLeaseClient(?string $leaseId = null): BlobLeaseClient
+    {
+        return new BlobLeaseClient(
+            $this->uri,
+            $this->credential,
+            $leaseId,
+            container: true,
+            options: new BlobLeaseClientOptions($this->options->httpClientOptions, $this->options->apiVersion),
         );
     }
 
@@ -132,28 +149,32 @@ final class BlobContainerClient
             });
     }
 
-    public function delete(): void
+    public function delete(DeleteContainerOptions $options = new DeleteContainerOptions): void
     {
-        $this->deleteAsync()->wait();
+        $this->deleteAsync($options)->wait();
     }
 
-    public function deleteAsync(): PromiseInterface
+    public function deleteAsync(DeleteContainerOptions $options = new DeleteContainerOptions): PromiseInterface
     {
         return $this->client->deleteAsync($this->uri, [
             RequestOptions::QUERY => [
                 'restype' => 'container',
             ],
+            RequestOptions::HEADERS => $options->conditions?->toHeaders(
+                'BlobContainerClient::delete',
+                RequestConditionSet::DATES_AND_LEASE,
+            ) ?? [],
         ]);
     }
 
-    public function deleteIfExists(): void
+    public function deleteIfExists(DeleteContainerOptions $options = new DeleteContainerOptions): void
     {
-        $this->deleteIfExistsAsync()->wait();
+        $this->deleteIfExistsAsync($options)->wait();
     }
 
-    public function deleteIfExistsAsync(): PromiseInterface
+    public function deleteIfExistsAsync(DeleteContainerOptions $options = new DeleteContainerOptions): PromiseInterface
     {
-        return $this->deleteAsync()
+        return $this->deleteAsync($options)
             ->otherwise(function (\Throwable $e) {
                 if ($e instanceof BlobStorageException && $e->errorCode === BlobErrorCode::ContainerNotFound) {
                     return;
@@ -187,19 +208,23 @@ final class BlobContainerClient
             });
     }
 
-    public function getProperties(): BlobContainerProperties
+    public function getProperties(GetContainerPropertiesOptions $options = new GetContainerPropertiesOptions): BlobContainerProperties
     {
         /** @phpstan-ignore-next-line */
-        return $this->getPropertiesAsync()->wait();
+        return $this->getPropertiesAsync($options)->wait();
     }
 
-    public function getPropertiesAsync(): PromiseInterface
+    public function getPropertiesAsync(GetContainerPropertiesOptions $options = new GetContainerPropertiesOptions): PromiseInterface
     {
         return $this->client
-            ->getAsync($this->uri, [
+            ->headAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'restype' => 'container',
                 ],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders(
+                    'BlobContainerClient::getProperties',
+                    RequestConditionSet::LEASE_ONLY,
+                ) ?? [],
             ])
             ->then(BlobContainerProperties::fromResponseHeaders(...));
     }
@@ -207,22 +232,28 @@ final class BlobContainerClient
     /**
      * @param  array<string>  $metadata
      */
-    public function setMetadata(array $metadata): void
+    public function setMetadata(array $metadata, SetContainerMetadataOptions $options = new SetContainerMetadataOptions): void
     {
-        $this->setMetadataAsync($metadata)->wait();
+        $this->setMetadataAsync($metadata, $options)->wait();
     }
 
     /**
      * @param  array<string>  $metadata
      */
-    public function setMetadataAsync(array $metadata): PromiseInterface
+    public function setMetadataAsync(array $metadata, SetContainerMetadataOptions $options = new SetContainerMetadataOptions): PromiseInterface
     {
         return $this->client->putAsync($this->uri, [
             RequestOptions::QUERY => [
                 'restype' => 'container',
                 'comp' => 'metadata',
             ],
-            RequestOptions::HEADERS => MetadataHelper::metadataToHeaders($metadata),
+            RequestOptions::HEADERS => [
+                ...MetadataHelper::metadataToHeaders($metadata),
+                ...($options->conditions?->toHeaders(
+                    'BlobContainerClient::setMetadata',
+                    RequestConditionSet::MODIFIED_SINCE_AND_LEASE,
+                ) ?? []),
+            ],
         ]);
     }
 

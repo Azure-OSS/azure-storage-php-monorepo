@@ -6,7 +6,12 @@ namespace AzureOss\Storage\Blob\Models;
 
 final class CommitBlockListOptions
 {
+    public readonly BlobHttpHeaders $httpHeaders;
+
     public function __construct(
-        public BlobHttpHeaders $httpHeaders = new BlobHttpHeaders,
-    ) {}
+        ?BlobHttpHeaders $httpHeaders = null,
+        public ?BlobRequestConditions $conditions = null,
+    ) {
+        $this->httpHeaders = $httpHeaders ?? new BlobHttpHeaders;
+    }
 }

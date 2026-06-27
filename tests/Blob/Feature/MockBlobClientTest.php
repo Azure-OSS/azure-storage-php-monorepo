@@ -6,10 +6,23 @@ namespace AzureOss\Storage\Tests\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
+use AzureOss\Storage\Blob\Models\AbortCopyFromUriOptions;
+use AzureOss\Storage\Blob\Models\AcquireBlobLeaseOptions;
 use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
+use AzureOss\Storage\Blob\Models\BlobRequestConditions;
 use AzureOss\Storage\Blob\Models\BlobServiceClientOptions;
+use AzureOss\Storage\Blob\Models\DeleteContainerOptions;
+use AzureOss\Storage\Blob\Models\GetBlobTagsOptions;
+use AzureOss\Storage\Blob\Models\GetContainerPropertiesOptions;
+use AzureOss\Storage\Blob\Models\SetBlobTagsOptions;
+use AzureOss\Storage\Blob\Models\SetContainerMetadataOptions;
+use AzureOss\Storage\Blob\Models\StageBlockOptions;
+use AzureOss\Storage\Blob\Models\StartCopyFromUriOptions;
+use AzureOss\Storage\Blob\Models\SyncCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
+use AzureOss\Storage\Blob\Specialized\BlockBlobClient;
 use AzureOss\Storage\Common\ApiVersion;
+use AzureOss\Storage\Common\Models\ETag;
 use AzureOss\Storage\Tests\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
@@ -106,6 +119,31 @@ class MockBlobClientTest extends TestCase
     }
 
     #[Test]
+    public function lease_clients_inherit_configured_api_version(): void
+    {
+        Server::enqueue([
+            new Response(201, ['x-ms-lease-id' => '11111111-1111-4111-8111-111111111111']),
+            new Response(201, ['x-ms-lease-id' => '22222222-2222-4222-8222-222222222222']),
+        ]);
+
+        /** @phpstan-ignore-next-line */
+        $uri = new Uri(Server::$url.'/devstoreaccount1');
+        $service = new BlobServiceClient($uri, options: new BlobServiceClientOptions(
+            apiVersion: ApiVersion::V2024_08_04,
+        ));
+        $container = $service->getContainerClient('test');
+
+        $container->getBlobLeaseClient()->acquire();
+        $container->getBlobClient('test')->getBlobLeaseClient()->acquire();
+
+        $requests = Server::received();
+
+        self::assertCount(2, $requests);
+        self::assertSame(ApiVersion::V2024_08_04->value, $requests[0]->getHeaderLine('x-ms-version'));
+        self::assertSame(ApiVersion::V2024_08_04->value, $requests[1]->getHeaderLine('x-ms-version'));
+    }
+
+    #[Test]
     public function upload_single_sends_correct_amount_of_requests(): void
     {
         Server::enqueue([
@@ -152,6 +190,37 @@ class MockBlobClientTest extends TestCase
 
         parse_str($requests[10]->getUri()->getQuery(), $query);
         self::assertSame('blocklist', $query['comp'] ?? null);
+    }
+
+    #[Test]
+    public function upload_parallel_blocks_sends_only_lease_id_to_stage_block_and_all_conditions_to_commit(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(200),
+            new Response(501),
+        ]);
+
+        $this->blob->upload('test', new UploadBlobOptions(
+            'text/plain',
+            initialTransferSize: 0,
+            maximumTransferSize: 8_000_000,
+            conditions: new BlobRequestConditions(
+                ifMatch: new ETag('"match"'),
+                ifModifiedSince: new \DateTimeImmutable('2025-01-01 12:34:56 UTC'),
+                leaseId: '11111111-1111-4111-8111-111111111111',
+            ),
+        ));
+
+        $requests = Server::received();
+
+        self::assertCount(2, $requests);
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[0]->getHeaderLine('x-ms-lease-id'));
+        self::assertSame('', $requests[0]->getHeaderLine('If-Match'));
+        self::assertSame('', $requests[0]->getHeaderLine('If-Modified-Since'));
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[1]->getHeaderLine('x-ms-lease-id'));
+        self::assertSame('"match"', $requests[1]->getHeaderLine('If-Match'));
+        self::assertSame('Wed, 01 Jan 2025 12:34:56 GMT', $requests[1]->getHeaderLine('If-Modified-Since'));
     }
 
     #[Test]
@@ -433,5 +502,315 @@ class MockBlobClientTest extends TestCase
         self::assertSame('8000001', $requests[0]->getHeaderLine('Content-Length'));
         parse_str($requests[1]->getUri()->getQuery(), $query);
         self::assertSame('blocklist', $query['comp'] ?? null);
+    }
+
+    #[Test]
+    public function container_get_properties_sends_only_lease_id_condition(): void
+    {
+        Server::enqueue([
+            new Response(200, [
+                'Last-Modified' => 'Wed, 01 Jan 2025 12:34:56 GMT',
+                'ETag' => '"container-etag"',
+            ]),
+            new Response(501),
+        ]);
+
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $container->getProperties(new GetContainerPropertiesOptions(
+            conditions: new BlobRequestConditions(
+                leaseId: '11111111-1111-4111-8111-111111111111',
+            ),
+        ));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('HEAD', $requests[0]->getMethod());
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[0]->getHeaderLine('x-ms-lease-id'));
+    }
+
+    #[Test]
+    public function container_get_properties_rejects_unsupported_conditions(): void
+    {
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobContainerClient::getProperties does not support request condition(s): ifMatch.');
+
+        $container->getProperties(new GetContainerPropertiesOptions(
+            conditions: new BlobRequestConditions(ifMatch: new ETag('"match"')),
+        ));
+    }
+
+    #[Test]
+    public function container_delete_sends_supported_conditions(): void
+    {
+        Server::enqueue([
+            new Response(202),
+            new Response(501),
+        ]);
+
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $container->delete(new DeleteContainerOptions(new BlobRequestConditions(
+            ifModifiedSince: new \DateTimeImmutable('2025-01-01 12:34:56 UTC'),
+            ifUnmodifiedSince: new \DateTimeImmutable('2025-01-02 12:34:56 UTC'),
+            leaseId: '11111111-1111-4111-8111-111111111111',
+        )));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('Wed, 01 Jan 2025 12:34:56 GMT', $requests[0]->getHeaderLine('If-Modified-Since'));
+        self::assertSame('Thu, 02 Jan 2025 12:34:56 GMT', $requests[0]->getHeaderLine('If-Unmodified-Since'));
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[0]->getHeaderLine('x-ms-lease-id'));
+    }
+
+    #[Test]
+    public function container_delete_rejects_unsupported_conditions(): void
+    {
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobContainerClient::delete does not support request condition(s): ifMatch, ifNoneMatch.');
+
+        $container->delete(new DeleteContainerOptions(new BlobRequestConditions(
+            ifMatch: new ETag('"match"'),
+            ifNoneMatch: ETag::all(),
+        )));
+    }
+
+    #[Test]
+    public function container_set_metadata_sends_supported_conditions(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(501),
+        ]);
+
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $container->setMetadata(['foo' => 'bar'], new SetContainerMetadataOptions(new BlobRequestConditions(
+            ifModifiedSince: new \DateTimeImmutable('2025-01-01 12:34:56 UTC'),
+            leaseId: '11111111-1111-4111-8111-111111111111',
+        )));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('Wed, 01 Jan 2025 12:34:56 GMT', $requests[0]->getHeaderLine('If-Modified-Since'));
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[0]->getHeaderLine('x-ms-lease-id'));
+    }
+
+    #[Test]
+    public function container_set_metadata_rejects_unsupported_conditions(): void
+    {
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobContainerClient::setMetadata does not support request condition(s): ifUnmodifiedSince.');
+
+        $container->setMetadata(['foo' => 'bar'], new SetContainerMetadataOptions(new BlobRequestConditions(
+            ifUnmodifiedSince: new \DateTimeImmutable('2025-01-02 12:34:56 UTC'),
+        )));
+    }
+
+    #[Test]
+    public function container_lease_operations_send_supported_conditions(): void
+    {
+        Server::enqueue([
+            new Response(201, ['x-ms-lease-id' => '22222222-2222-4222-8222-222222222222']),
+            new Response(501),
+        ]);
+
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $container->getBlobLeaseClient()->acquire(15, new AcquireBlobLeaseOptions(new BlobRequestConditions(
+            ifModifiedSince: new \DateTimeImmutable('2025-01-01 12:34:56 UTC'),
+            ifUnmodifiedSince: new \DateTimeImmutable('2025-01-02 12:34:56 UTC'),
+        )));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('Wed, 01 Jan 2025 12:34:56 GMT', $requests[0]->getHeaderLine('If-Modified-Since'));
+        self::assertSame('Thu, 02 Jan 2025 12:34:56 GMT', $requests[0]->getHeaderLine('If-Unmodified-Since'));
+        self::assertSame('', $requests[0]->getHeaderLine('x-ms-lease-id'));
+    }
+
+    #[Test]
+    public function container_lease_operations_reject_unsupported_conditions(): void
+    {
+        $serverUrl = Server::$url;
+        self::assertIsString($serverUrl);
+
+        $service = new BlobServiceClient(new Uri($serverUrl.'/devstoreaccount1'));
+        $container = $service->getContainerClient('test');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobLeaseClient::acquire does not support request condition(s): ifMatch, leaseId.');
+
+        $container->getBlobLeaseClient()->acquire(15, new AcquireBlobLeaseOptions(new BlobRequestConditions(
+            ifMatch: new ETag('"match"'),
+            leaseId: '11111111-1111-4111-8111-111111111111',
+        )));
+    }
+
+    #[Test]
+    public function abort_copy_from_uri_sends_lease_id_condition(): void
+    {
+        Server::enqueue([
+            new Response(204),
+            new Response(501),
+        ]);
+
+        $this->blob->abortCopyFromUri('copy-id', new AbortCopyFromUriOptions(new BlobRequestConditions(
+            leaseId: '11111111-1111-4111-8111-111111111111',
+        )));
+
+        $requests = Server::received();
+
+        self::assertCount(1, $requests);
+        self::assertSame('abort', $requests[0]->getHeaderLine('x-ms-copy-action'));
+        self::assertSame('11111111-1111-4111-8111-111111111111', $requests[0]->getHeaderLine('x-ms-lease-id'));
+    }
+
+    #[Test]
+    public function abort_copy_from_uri_rejects_unsupported_conditions(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobClient::abortCopyFromUri does not support request condition(s): ifMatch.');
+
+        $this->blob->abortCopyFromUri('copy-id', new AbortCopyFromUriOptions(new BlobRequestConditions(
+            ifMatch: new ETag('"match"'),
+        )));
+    }
+
+    #[Test]
+    public function start_copy_from_uri_rejects_source_lease_id(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobClient::startCopyFromUri source does not support request condition(s): leaseId.');
+
+        $this->blob->startCopyFromUri(
+            new Uri('https://example.com/source'),
+            new StartCopyFromUriOptions(
+                sourceConditions: new BlobRequestConditions(
+                    leaseId: '11111111-1111-4111-8111-111111111111',
+                ),
+            ),
+        );
+    }
+
+    #[Test]
+    public function sync_copy_from_uri_rejects_source_lease_id(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobClient::syncCopyFromUri source does not support request condition(s): leaseId.');
+
+        $this->blob->syncCopyFromUri(
+            new Uri('https://example.com/source'),
+            new SyncCopyFromUriOptions(
+                sourceConditions: new BlobRequestConditions(
+                    leaseId: '11111111-1111-4111-8111-111111111111',
+                ),
+            ),
+        );
+    }
+
+    #[Test]
+    public function stage_block_rejects_non_lease_conditions(): void
+    {
+        $blockBlob = new BlockBlobClient($this->blob->uri);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlockBlobClient::stageBlock does not support request condition(s): ifMatch.');
+
+        $blockBlob->stageBlock(
+            base64_encode('block-1'),
+            'content',
+            new StageBlockOptions(new BlobRequestConditions(ifMatch: new ETag('"match"'))),
+        );
+    }
+
+    #[Test]
+    public function released_and_broken_lease_results_do_not_fall_back_to_client_lease_id(): void
+    {
+        Server::enqueue([
+            new Response(200, [
+                'ETag' => '"released"',
+                'Last-Modified' => 'Wed, 01 Jan 2025 12:34:56 GMT',
+            ]),
+            new Response(202, ['x-ms-lease-time' => '0']),
+            new Response(501),
+        ]);
+
+        $leaseClient = $this->blob->getBlobLeaseClient('11111111-1111-4111-8111-111111111111');
+
+        $released = $leaseClient->release();
+        $broken = $leaseClient->break(0);
+
+        self::assertSame('"released"', (string) $released->eTag);
+        self::assertSame('Wed, 01 Jan 2025 12:34:56 GMT', $released->lastModified->format('D, d M Y H:i:s T'));
+        self::assertNull($broken->leaseId);
+        self::assertSame(0, $broken->leaseTime);
+    }
+
+    #[Test]
+    public function tag_operations_send_conditions(): void
+    {
+        Server::enqueue([
+            new Response(200),
+            new Response(200, body: <<<'XML'
+<Tags><TagSet><Tag><Key>foo</Key><Value>bar</Value></Tag></TagSet></Tags>
+XML),
+            new Response(501),
+        ]);
+
+        $conditions = new BlobRequestConditions(
+            ifMatch: new ETag('"match"'),
+            leaseId: '11111111-1111-4111-8111-111111111111',
+        );
+
+        $this->blob->setTags(['foo' => 'bar'], new SetBlobTagsOptions($conditions));
+        $tags = $this->blob->getTags(new GetBlobTagsOptions($conditions));
+
+        $requests = Server::received();
+
+        self::assertSame(['foo' => 'bar'], $tags);
+        self::assertCount(2, $requests);
+        foreach ($requests as $request) {
+            self::assertSame('"match"', $request->getHeaderLine('If-Match'));
+            self::assertSame('11111111-1111-4111-8111-111111111111', $request->getHeaderLine('x-ms-lease-id'));
+        }
     }
 }
