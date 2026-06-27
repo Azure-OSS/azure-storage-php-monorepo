@@ -6,6 +6,9 @@ namespace AzureOss\Storage\Queue\Models;
 
 use AzureOss\Storage\Queue\Exceptions\DeserializationException;
 
+/**
+ * Represents Azure Storage send receipt data.
+ */
 final class SendReceipt
 {
     private function __construct(

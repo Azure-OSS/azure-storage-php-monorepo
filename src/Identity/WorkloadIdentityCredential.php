@@ -8,6 +8,9 @@ use Http\Discovery\Exception\NotFoundException;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 
+/**
+ * Exchanges a federated workload identity token for a Microsoft Entra access token.
+ */
 final class WorkloadIdentityCredential implements TokenCredential
 {
     public function __construct(

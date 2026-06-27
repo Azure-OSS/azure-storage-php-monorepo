@@ -8,6 +8,9 @@ use AzureOss\Storage\Blob\Helpers\DateHelper;
 use AzureOss\Storage\Common\Models\ETag;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Represents Azure Storage released object info data.
+ */
 final class ReleasedObjectInfo
 {
     public function __construct(

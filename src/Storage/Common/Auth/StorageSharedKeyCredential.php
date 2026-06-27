@@ -6,9 +6,6 @@ namespace AzureOss\Storage\Common\Auth;
 
 use AzureOss\Storage\Common\Exceptions\InvalidAccountKeyException;
 
-/**
- * @see https://learn.microsoft.com/en-us/rest/api/storageservices/authorize-with-shared-key
- */
 final class StorageSharedKeyCredential
 {
     public function __construct(

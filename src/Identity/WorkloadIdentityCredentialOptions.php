@@ -8,6 +8,9 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 
+/**
+ * Configures workload identity credential options.
+ */
 final class WorkloadIdentityCredentialOptions extends TokenCredentialOptions
 {
     public function __construct(

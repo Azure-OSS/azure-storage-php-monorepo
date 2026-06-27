@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Sas;
 
+/**
+ * Selects the operations granted by a container service SAS.
+ */
 final class BlobContainerSasPermissions
 {
     public function __construct(

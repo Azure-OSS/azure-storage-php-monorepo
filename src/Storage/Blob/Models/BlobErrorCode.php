@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Defines the supported blob error code values.
+ */
 enum BlobErrorCode: string
 {
     case AccountAlreadyExists = 'AccountAlreadyExists';

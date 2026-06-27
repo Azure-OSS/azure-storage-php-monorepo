@@ -6,6 +6,9 @@ namespace AzureOss\Storage\Blob\Models;
 
 use AzureOss\Storage\Common\Models\ETag;
 
+/**
+ * Represents Azure Storage blob request conditions data.
+ */
 final class BlobRequestConditions
 {
     public function __construct(

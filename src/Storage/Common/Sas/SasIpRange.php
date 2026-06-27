@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Sas;
 
+/**
+ * Restricts a SAS to a source IPv4 address or inclusive address range.
+ */
 final class SasIpRange
 {
     public function __construct(

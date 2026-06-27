@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Represents Azure Storage blob container data.
+ */
 final class BlobContainer
 {
     private function __construct(

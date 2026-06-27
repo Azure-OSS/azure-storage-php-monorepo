@@ -6,6 +6,9 @@ namespace AzureOss\Storage\Blob\Exceptions;
 
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
 
+/**
+ * Represents an error response returned by Azure Blob Storage.
+ */
 class BlobStorageException extends \RuntimeException
 {
     public function __construct(

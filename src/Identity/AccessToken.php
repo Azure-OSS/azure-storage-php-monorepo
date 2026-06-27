@@ -4,15 +4,27 @@ declare(strict_types=1);
 
 namespace AzureOss\Identity;
 
+/**
+ * Represents an OAuth access token and its expiry information.
+ */
 final class AccessToken
 {
+    /**
+     * @param  string  $token  Token value sent in the Authorization header.
+     * @param  \DateTimeInterface  $expiresOn  Instant at which the token expires.
+     * @param  string  $tokenType  Authorization scheme returned by Microsoft Entra ID.
+     */
     public function __construct(
         public readonly string $token,
         public readonly \DateTimeInterface $expiresOn,
         public readonly string $tokenType
     ) {}
 
-    /** @internal */
+    /**
+     * Creates an access token from a Microsoft Entra token endpoint response.
+     *
+     * @internal
+     */
     public static function fromTokenResponse(string $responseBody): self
     {
         $data = json_decode($responseBody, true);

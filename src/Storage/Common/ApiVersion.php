@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common;
 
+/**
+ * Defines the supported API version values.
+ */
 enum ApiVersion: string
 {
     case V2026_06_06 = '2026-06-06';

@@ -42,6 +42,9 @@ use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\RequestOptions;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Provides operations for an Azure Blob Storage container and the blobs within it.
+ */
 final class BlobContainerClient
 {
     public const ROOT_BLOB_CONTAINER_NAME = '$root';
@@ -55,7 +58,11 @@ final class BlobContainerClient
     public readonly string $containerName;
 
     /**
-     * @throws InvalidBlobUriException
+     * @param  UriInterface  $uri  URI of the container, including any SAS query string.
+     * @param  StorageSharedKeyCredential|TokenCredential|null  $credential  Credential used to authorize requests, or null for anonymous/SAS access.
+     * @param  BlobContainerClientOptions  $options  Client transport and service-version options.
+     *
+     * @throws InvalidBlobUriException When the URI does not identify a container.
      */
     public function __construct(
         public readonly UriInterface $uri,
@@ -66,6 +73,7 @@ final class BlobContainerClient
         $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $this->options->httpClientOptions, $this->options->apiVersion);
     }
 
+    /** Creates a general-purpose client for a blob without making a service request. */
     public function getBlobClient(string $blobName): BlobClient
     {
         return new BlobClient(
@@ -75,6 +83,7 @@ final class BlobContainerClient
         );
     }
 
+    /** Creates a block blob client without making a service request. */
     public function getBlockBlobClient(string $blobName): BlockBlobClient
     {
         return new BlockBlobClient(
@@ -84,6 +93,7 @@ final class BlobContainerClient
         );
     }
 
+    /** Creates a lease client for this container without making a service request. */
     public function getBlobLeaseClient(?string $leaseId = null): BlobLeaseClient
     {
         return new BlobLeaseClient(
@@ -101,7 +111,7 @@ final class BlobContainerClient
     }
 
     /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/create-container
+     * Creates the container.
      */
     public function create(CreateContainerOptions $options = new CreateContainerOptions): void
     {
@@ -109,7 +119,7 @@ final class BlobContainerClient
     }
 
     /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/create-container
+     * Asynchronously creates the container.
      */
     public function createAsync(CreateContainerOptions $options = new CreateContainerOptions): PromiseInterface
     {
@@ -127,7 +137,7 @@ final class BlobContainerClient
     }
 
     /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/create-container
+     * Creates the container if it does not already exist.
      */
     public function createIfNotExists(CreateContainerOptions $options = new CreateContainerOptions): void
     {
@@ -135,7 +145,7 @@ final class BlobContainerClient
     }
 
     /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/create-container
+     * Asynchronously creates the container if it does not already exist.
      */
     public function createIfNotExistsAsync(CreateContainerOptions $options = new CreateContainerOptions): PromiseInterface
     {
@@ -149,11 +159,13 @@ final class BlobContainerClient
             });
     }
 
+    /** Deletes the container. */
     public function delete(DeleteContainerOptions $options = new DeleteContainerOptions): void
     {
         $this->deleteAsync($options)->wait();
     }
 
+    /** Asynchronously deletes the container. */
     public function deleteAsync(DeleteContainerOptions $options = new DeleteContainerOptions): PromiseInterface
     {
         return $this->client->deleteAsync($this->uri, [
@@ -167,11 +179,13 @@ final class BlobContainerClient
         ]);
     }
 
+    /** Deletes the container if it exists. */
     public function deleteIfExists(DeleteContainerOptions $options = new DeleteContainerOptions): void
     {
         $this->deleteIfExistsAsync($options)->wait();
     }
 
+    /** Asynchronously deletes the container if it exists. */
     public function deleteIfExistsAsync(DeleteContainerOptions $options = new DeleteContainerOptions): PromiseInterface
     {
         return $this->deleteAsync($options)
@@ -184,12 +198,14 @@ final class BlobContainerClient
             });
     }
 
+    /** Determines whether the container exists. */
     public function exists(): bool
     {
         /** @phpstan-ignore-next-line */
         return $this->existsAsync()->wait();
     }
 
+    /** Asynchronously determines whether the container exists. */
     public function existsAsync(): PromiseInterface
     {
         return $this->client
@@ -208,12 +224,14 @@ final class BlobContainerClient
             });
     }
 
+    /** Gets the container's properties and metadata. */
     public function getProperties(GetContainerPropertiesOptions $options = new GetContainerPropertiesOptions): BlobContainerProperties
     {
         /** @phpstan-ignore-next-line */
         return $this->getPropertiesAsync($options)->wait();
     }
 
+    /** Asynchronously gets the container's properties and metadata. */
     public function getPropertiesAsync(GetContainerPropertiesOptions $options = new GetContainerPropertiesOptions): PromiseInterface
     {
         return $this->client
@@ -230,6 +248,8 @@ final class BlobContainerClient
     }
 
     /**
+     * Replaces all user-defined metadata on the container.
+     *
      * @param  array<string>  $metadata
      */
     public function setMetadata(array $metadata, SetContainerMetadataOptions $options = new SetContainerMetadataOptions): void
@@ -238,6 +258,8 @@ final class BlobContainerClient
     }
 
     /**
+     * Asynchronously replaces all user-defined metadata on the container.
+     *
      * @param  array<string>  $metadata
      */
     public function setMetadataAsync(array $metadata, SetContainerMetadataOptions $options = new SetContainerMetadataOptions): PromiseInterface
@@ -258,6 +280,8 @@ final class BlobContainerClient
     }
 
     /**
+     * Lists blobs in a flat sequence, following continuation markers automatically.
+     *
      * @return \Generator<Blob>
      */
     public function getBlobs(?string $prefix = null, GetBlobsOptions $options = new GetBlobsOptions): \Generator
@@ -279,6 +303,8 @@ final class BlobContainerClient
     }
 
     /**
+     * Lists blobs as a hierarchy of blob items and virtual-directory prefixes.
+     *
      * @return \Generator<Blob|BlobPrefix>
      */
     public function getBlobsByHierarchy(?string $prefix = null, string $delimiter = '/', GetBlobsOptions $options = new GetBlobsOptions): \Generator
@@ -319,11 +345,17 @@ final class BlobContainerClient
         return ListBlobsResponseBody::fromXml(new \SimpleXMLElement($response->getBody()->getContents()));
     }
 
+    /** Returns whether this client has a shared-key credential capable of signing a container SAS. */
     public function canGenerateSasUri(): bool
     {
         return $this->credential instanceof StorageSharedKeyCredential;
     }
 
+    /**
+     * Generates a URI for this container containing a signed service SAS query string.
+     *
+     * @throws UnableToGenerateSasException When the client does not have a shared-key credential.
+     */
     public function generateSasUri(BlobSasBuilder $blobSasBuilder): UriInterface
     {
         if (! $this->credential instanceof StorageSharedKeyCredential) {
@@ -342,6 +374,8 @@ final class BlobContainerClient
     }
 
     /**
+     * Finds blobs in this container whose index tags match the SQL expression.
+     *
      * @return \Generator<TaggedBlob>
      */
     public function findBlobsByTag(string $tagFilterSqlExpression): \Generator

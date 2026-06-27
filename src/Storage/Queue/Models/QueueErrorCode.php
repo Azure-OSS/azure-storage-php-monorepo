@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Queue\Models;
 
+/**
+ * Defines the supported queue error code values.
+ */
 enum QueueErrorCode: string
 {
     case AccountAlreadyExists = 'AccountAlreadyExists';

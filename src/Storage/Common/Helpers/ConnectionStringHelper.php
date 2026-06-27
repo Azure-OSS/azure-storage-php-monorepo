@@ -9,8 +9,6 @@ use Psr\Http\Message\UriInterface;
 
 /**
  * @internal
- *
- * @see https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
  */
 final class ConnectionStringHelper
 {

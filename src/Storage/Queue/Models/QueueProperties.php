@@ -8,6 +8,9 @@ use AzureOss\Storage\Queue\Exceptions\DeserializationException;
 use AzureOss\Storage\Queue\Helpers\MetadataHelper;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Represents Azure Storage queue properties data.
+ */
 final class QueueProperties
 {
     /**

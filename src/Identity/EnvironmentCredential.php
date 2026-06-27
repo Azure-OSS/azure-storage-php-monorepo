@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Identity;
 
+/**
+ * Authenticates from service-principal values in the standard AZURE_* environment variables.
+ */
 final class EnvironmentCredential implements TokenCredential
 {
     public function __construct(

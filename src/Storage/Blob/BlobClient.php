@@ -54,6 +54,12 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Provides operations for an Azure Storage blob.
+ *
+ * Supports streaming downloads, automatic single-request or staged-block uploads,
+ * metadata and tag management, copy operations, leases, and SAS generation.
+ */
 final class BlobClient
 {
     private readonly Client $client;
@@ -65,7 +71,11 @@ final class BlobClient
     public readonly string $blobName;
 
     /**
-     * @throws InvalidBlobUriException
+     * @param  UriInterface  $uri  URI of the blob, including any SAS query string.
+     * @param  StorageSharedKeyCredential|TokenCredential|null  $credential  Credential used to authorize requests, or null for anonymous/SAS access.
+     * @param  BlobClientOptions  $options  Client transport and service-version options.
+     *
+     * @throws InvalidBlobUriException When the URI does not identify both a container and blob.
      */
     public function __construct(
         public readonly UriInterface $uri,
@@ -78,12 +88,14 @@ final class BlobClient
         $this->blockBlobClient = new BlockBlobClient($uri, $credential, new BlockBlobClientOptions($options->httpClientOptions, $options->apiVersion));
     }
 
+    /** Downloads the blob as a streaming response. */
     public function downloadStreaming(DownloadBlobOptions $options = new DownloadBlobOptions): BlobDownloadStreamingResult
     {
         /** @phpstan-ignore-next-line */
         return $this->downloadStreamingAsync($options)->wait();
     }
 
+    /** Asynchronously downloads the blob as a streaming response. */
     public function downloadStreamingAsync(DownloadBlobOptions $options = new DownloadBlobOptions): PromiseInterface
     {
         return $this->client
@@ -94,12 +106,14 @@ final class BlobClient
             ->then(BlobDownloadStreamingResult::fromResponse(...));
     }
 
+    /** Gets the blob's properties and metadata without downloading its content. */
     public function getProperties(GetBlobPropertiesOptions $options = new GetBlobPropertiesOptions): BlobProperties
     {
         /** @phpstan-ignore-next-line */
         return $this->getPropertiesAsync($options)->wait();
     }
 
+    /** Asynchronously gets the blob's properties and metadata. */
     public function getPropertiesAsync(GetBlobPropertiesOptions $options = new GetBlobPropertiesOptions): PromiseInterface
     {
         return $this->client
@@ -109,6 +123,7 @@ final class BlobClient
             ->then(BlobProperties::fromResponseHeaders(...));
     }
 
+    /** Creates a lease client for this blob without making a service request. */
     public function getBlobLeaseClient(?string $leaseId = null): BlobLeaseClient
     {
         return new BlobLeaseClient(
@@ -120,6 +135,8 @@ final class BlobClient
     }
 
     /**
+     * Replaces all user-defined metadata on the blob.
+     *
      * @param  array<string>  $metadata
      */
     public function setMetadata(array $metadata, SetBlobMetadataOptions $options = new SetBlobMetadataOptions): void
@@ -128,6 +145,8 @@ final class BlobClient
     }
 
     /**
+     * Asynchronously replaces all user-defined metadata on the blob.
+     *
      * @param  array<string>  $metadata
      */
     public function setMetadataAsync(array $metadata, SetBlobMetadataOptions $options = new SetBlobMetadataOptions): PromiseInterface
@@ -145,9 +164,7 @@ final class BlobClient
     }
 
     /**
-     * Sets system properties on the blob
-     *
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/set-blob-properties
+     * Sets the blob's standard HTTP headers.
      */
     public function setHttpHeaders(BlobHttpHeaders $httpHeaders, SetBlobHttpHeadersOptions $options = new SetBlobHttpHeadersOptions): void
     {
@@ -155,7 +172,7 @@ final class BlobClient
     }
 
     /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/set-blob-properties
+     * Asynchronously sets the blob's standard HTTP headers.
      */
     public function setHttpHeadersAsync(BlobHttpHeaders $httpHeaders, SetBlobHttpHeadersOptions $options = new SetBlobHttpHeadersOptions): PromiseInterface
     {
@@ -168,11 +185,13 @@ final class BlobClient
         ]);
     }
 
+    /** Deletes the blob. */
     public function delete(DeleteBlobOptions $options = new DeleteBlobOptions): void
     {
         $this->deleteAsync($options)->wait();
     }
 
+    /** Asynchronously deletes the blob. */
     public function deleteAsync(DeleteBlobOptions $options = new DeleteBlobOptions): PromiseInterface
     {
         return $this->client->deleteAsync($this->uri, [
@@ -180,11 +199,13 @@ final class BlobClient
         ]);
     }
 
+    /** Deletes the blob if it exists. */
     public function deleteIfExists(DeleteBlobOptions $options = new DeleteBlobOptions): void
     {
         $this->deleteIfExistsAsync($options)->wait();
     }
 
+    /** Asynchronously deletes the blob if it exists. */
     public function deleteIfExistsAsync(DeleteBlobOptions $options = new DeleteBlobOptions): PromiseInterface
     {
         return $this->deleteAsync($options)->otherwise(
@@ -198,12 +219,14 @@ final class BlobClient
         );
     }
 
+    /** Determines whether the blob exists. */
     public function exists(): bool
     {
         /** @phpstan-ignore-next-line */
         return $this->existsAsync()->wait();
     }
 
+    /** Asynchronously determines whether the blob exists. */
     public function existsAsync(): PromiseInterface
     {
         return $this->getPropertiesAsync()
@@ -220,6 +243,8 @@ final class BlobClient
     }
 
     /**
+     * Uploads content, staging blocks automatically when it exceeds the configured threshold.
+     *
      * @param  string|resource|StreamInterface  $content
      */
     public function upload($content, UploadBlobOptions $options = new UploadBlobOptions): void
@@ -228,6 +253,8 @@ final class BlobClient
     }
 
     /**
+     * Asynchronously uploads content, staging blocks automatically when required.
+     *
      * @param  string|resource|StreamInterface  $content
      */
     public function uploadAsync($content, UploadBlobOptions $options = new UploadBlobOptions): PromiseInterface
@@ -359,18 +386,14 @@ final class BlobClient
         return base64_encode(str_pad((string) count($blockIds), 6, '0', STR_PAD_LEFT));
     }
 
-    /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/copy-blob-from-url
-     */
+    /** Copies a source blob to this blob in a synchronous service operation. */
     public function syncCopyFromUri(UriInterface $source, SyncCopyFromUriOptions $options = new SyncCopyFromUriOptions): BlobCopyResult
     {
         /** @phpstan-ignore-next-line */
         return $this->syncCopyFromUriAsync($source, $options)->wait();
     }
 
-    /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/copy-blob-from-url
-     */
+    /** Asynchronously performs a synchronous server-side copy to this blob. */
     public function syncCopyFromUriAsync(UriInterface $source, SyncCopyFromUriOptions $options = new SyncCopyFromUriOptions): PromiseInterface
     {
         return $this->client
@@ -392,18 +415,14 @@ final class BlobClient
             ->then(BlobCopyResult::fromResponse(...));
     }
 
-    /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/copy-blob-from-url
-     */
+    /** Starts a potentially long-running server-side copy to this blob. */
     public function startCopyFromUri(UriInterface $source, StartCopyFromUriOptions $options = new StartCopyFromUriOptions): BlobCopyResult
     {
         /** @phpstan-ignore-next-line */
         return $this->startCopyFromUriAsync($source, $options)->wait();
     }
 
-    /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/copy-blob-from-url
-     */
+    /** Asynchronously starts a potentially long-running server-side copy. */
     public function startCopyFromUriAsync(UriInterface $source, StartCopyFromUriOptions $options = new StartCopyFromUriOptions): PromiseInterface
     {
         return $this->client
@@ -424,17 +443,13 @@ final class BlobClient
             ->then(BlobCopyResult::fromResponse(...));
     }
 
-    /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/abort-copy-blob
-     */
+    /** Aborts a pending copy operation identified by its copy ID. */
     public function abortCopyFromUri(string $copyId, AbortCopyFromUriOptions $options = new AbortCopyFromUriOptions): void
     {
         $this->abortCopyFromUriAsync($copyId, $options)->wait();
     }
 
-    /**
-     * @see https://learn.microsoft.com/en-us/rest/api/storageservices/abort-copy-blob
-     */
+    /** Asynchronously aborts a pending copy operation. */
     public function abortCopyFromUriAsync(string $copyId, AbortCopyFromUriOptions $options = new AbortCopyFromUriOptions): PromiseInterface
     {
         return $this->client
@@ -465,6 +480,12 @@ final class BlobClient
      *
      * @throws \RuntimeException If copy operation fails or is aborted
      * @throws \RuntimeException If timeout is reached before copy completes
+     */
+    /**
+     * Polls this blob until its current copy operation completes or the timeout expires.
+     *
+     * @param  int  $pollingIntervalMs  Delay between property requests in milliseconds.
+     * @param  int|null  $timeoutMs  Maximum wait in milliseconds, or null for no timeout.
      */
     public function waitForCopyCompletion(int $pollingIntervalMs = 1000, ?int $timeoutMs = null): BlobProperties
     {
@@ -512,11 +533,17 @@ final class BlobClient
         }
     }
 
+    /** Returns whether this client has a shared-key credential capable of signing a blob SAS. */
     public function canGenerateSasUri(): bool
     {
         return $this->credential instanceof StorageSharedKeyCredential;
     }
 
+    /**
+     * Generates a URI for this blob containing a signed service SAS query string.
+     *
+     * @throws UnableToGenerateSasException When the client does not have a shared-key credential.
+     */
     public function generateSasUri(BlobSasBuilder $blobSasBuilder): UriInterface
     {
         if (! $this->credential instanceof StorageSharedKeyCredential) {
@@ -536,6 +563,8 @@ final class BlobClient
     }
 
     /**
+     * Replaces all index tags on the blob.
+     *
      * @param  array<string>  $tags
      */
     public function setTags(array $tags, SetBlobTagsOptions $options = new SetBlobTagsOptions): void
@@ -544,6 +573,8 @@ final class BlobClient
     }
 
     /**
+     * Asynchronously replaces all index tags on the blob.
+     *
      * @param  array<string>  $tags
      */
     public function setTagsAsync(array $tags, SetBlobTagsOptions $options = new SetBlobTagsOptions): PromiseInterface
@@ -559,6 +590,8 @@ final class BlobClient
     }
 
     /**
+     * Gets all index tags associated with the blob.
+     *
      * @return array<string>
      */
     public function getTags(GetBlobTagsOptions $options = new GetBlobTagsOptions): array
@@ -567,6 +600,7 @@ final class BlobClient
         return $this->getTagsAsync($options)->wait();
     }
 
+    /** Asynchronously gets all index tags associated with the blob. */
     public function getTagsAsync(GetBlobTagsOptions $options = new GetBlobTagsOptions): PromiseInterface
     {
         return $this->client

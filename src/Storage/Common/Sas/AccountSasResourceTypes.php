@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Sas;
 
+/**
+ * Selects the service, container, and object resource types granted by an account SAS.
+ */
 final class AccountSasResourceTypes
 {
     public function __construct(

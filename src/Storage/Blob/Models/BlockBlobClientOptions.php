@@ -7,6 +7,9 @@ namespace AzureOss\Storage\Blob\Models;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Middleware\HttpClientOptions;
 
+/**
+ * Configures block blob client options.
+ */
 final readonly class BlockBlobClientOptions
 {
     public function __construct(

@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace AzureOss\Identity;
 
+/**
+ * Tries a configurable chain of common Azure credentials.
+ *
+ * By default the chain checks environment and workload identity configuration;
+ * managed identity can be enabled through {@see DefaultAzureCredentialOptions}.
+ */
 final class DefaultAzureCredential implements TokenCredential
 {
     private TokenCredential $chain;
 
+    /** Creates the default credential chain from the enabled credential sources. */
     public function __construct(
         private readonly DefaultAzureCredentialOptions $options = new DefaultAzureCredentialOptions
     ) {

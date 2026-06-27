@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Sas;
 
+/**
+ * Selects the operations granted by an account SAS.
+ */
 final class AccountSasPermissions
 {
     public function __construct(

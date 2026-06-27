@@ -24,12 +24,23 @@ use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\RequestOptions;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Provides operations for an Azure Storage queue and its messages.
+ *
+ * Synchronous methods wait for their corresponding asynchronous operation. Async
+ * methods return a Guzzle promise that resolves to the documented result type.
+ */
 final class QueueClient
 {
     private readonly Client $client;
 
     public readonly string $queueName;
 
+    /**
+     * @param  UriInterface  $uri  URI of the queue, including any SAS query string.
+     * @param  StorageSharedKeyCredential|TokenCredential|null  $credential  Credential used to authorize requests, or null for SAS access.
+     * @param  QueueClientOptions  $options  Client transport and service-version options.
+     */
     public function __construct(
         public UriInterface $uri,
         public readonly StorageSharedKeyCredential|TokenCredential|null $credential = null,
@@ -41,21 +52,25 @@ final class QueueClient
         $this->client = (new ClientFactory)->create($this->uri, $credential, new QueueStorageExceptionDeserializer, $this->options->httpClientOptions, $this->options->apiVersion);
     }
 
+    /** Creates the queue. */
     public function create(): void
     {
         $this->createAsync()->wait();
     }
 
+    /** Asynchronously creates the queue. */
     public function createAsync(): PromiseInterface
     {
         return $this->client->putAsync($this->uri);
     }
 
+    /** Creates the queue if it does not already exist. */
     public function createIfNotExists(): void
     {
         $this->createIfNotExistsAsync()->wait();
     }
 
+    /** Asynchronously creates the queue if it does not already exist. */
     public function createIfNotExistsAsync(): PromiseInterface
     {
         return $this->createAsync()
@@ -68,21 +83,25 @@ final class QueueClient
             });
     }
 
+    /** Deletes the queue. */
     public function delete(): void
     {
         $this->deleteAsync()->wait();
     }
 
+    /** Asynchronously deletes the queue. */
     public function deleteAsync(): PromiseInterface
     {
         return $this->client->deleteAsync($this->uri);
     }
 
+    /** Deletes the queue if it exists. */
     public function deleteIfExists(): void
     {
         $this->deleteIfExistsAsync()->wait();
     }
 
+    /** Asynchronously deletes the queue if it exists. */
     public function deleteIfExistsAsync(): PromiseInterface
     {
         return $this->deleteAsync()
@@ -95,12 +114,14 @@ final class QueueClient
             });
     }
 
+    /** Determines whether the queue exists. */
     public function exists(): bool
     {
         /** @phpstan-ignore-next-line */
         return $this->existsAsync()->wait();
     }
 
+    /** Asynchronously determines whether the queue exists. */
     public function existsAsync(): PromiseInterface
     {
         return $this->client
@@ -119,12 +140,14 @@ final class QueueClient
             });
     }
 
+    /** Gets queue metadata and approximate message count. */
     public function getProperties(): QueueProperties
     {
         /** @phpstan-ignore-next-line */
         return $this->getPropertiesAsync()->wait();
     }
 
+    /** Asynchronously gets queue metadata and approximate message count. */
     public function getPropertiesAsync(): PromiseInterface
     {
         return $this->client
@@ -136,22 +159,31 @@ final class QueueClient
             ->then(QueueProperties::fromResponseHeaders(...));
     }
 
+    /** Deletes all messages from the queue. */
     public function clearMessages(): void
     {
         $this->clearMessagesAsync()->wait();
     }
 
+    /** Asynchronously deletes all messages from the queue. */
     public function clearMessagesAsync(): PromiseInterface
     {
         return $this->client->deleteAsync($this->messagesUri());
     }
 
+    /**
+     * Adds a message to the queue.
+     *
+     * @param  int|null  $visibilityTimeout  Seconds before the new message becomes visible.
+     * @param  int|null  $timeToLive  Message lifetime in seconds; use -1 for no expiry where supported.
+     */
     public function sendMessage(string $messageText, ?int $visibilityTimeout = null, ?int $timeToLive = null): SendReceipt
     {
         /** @phpstan-ignore-next-line */
         return $this->sendMessageAsync($messageText, $visibilityTimeout, $timeToLive)->wait();
     }
 
+    /** Asynchronously adds a message to the queue. */
     public function sendMessageAsync(string $messageText, ?int $visibilityTimeout = null, ?int $timeToLive = null): PromiseInterface
     {
         $query = [];
@@ -170,12 +202,16 @@ final class QueueClient
             ->then(SendMessageResponseBody::fromResponse(...));
     }
 
+    /**
+     * Updates a message's content or visibility timeout using its current pop receipt.
+     */
     public function updateMessage(string $messageId, string $popReceipt, int $visibilityTimeout, ?string $messageText = null): UpdateReceipt
     {
         /** @phpstan-ignore-next-line */
         return $this->updateMessageAsync($messageId, $popReceipt, $visibilityTimeout, $messageText)->wait();
     }
 
+    /** Asynchronously updates a message's content or visibility timeout. */
     public function updateMessageAsync(string $messageId, string $popReceipt, int $visibilityTimeout, ?string $messageText = null): PromiseInterface
     {
         $options = [
@@ -194,11 +230,13 @@ final class QueueClient
             ->then(UpdateMessageResponseBody::fromResponse(...));
     }
 
+    /** Deletes a message using the pop receipt from its most recent receive or update operation. */
     public function deleteMessage(string $messageId, string $popReceipt): void
     {
         $this->deleteMessageAsync($messageId, $popReceipt)->wait();
     }
 
+    /** Asynchronously deletes a message using its current pop receipt. */
     public function deleteMessageAsync(string $messageId, string $popReceipt): PromiseInterface
     {
         return $this->client->deleteAsync($this->messageUri($messageId), [
@@ -208,12 +246,14 @@ final class QueueClient
         ]);
     }
 
+    /** Receives the next visible message, or null when the queue has no visible messages. */
     public function receiveMessage(?int $visibilityTimeout = null): ?QueueMessage
     {
         /** @phpstan-ignore-next-line */
         return $this->receiveMessageAsync($visibilityTimeout)->wait();
     }
 
+    /** Asynchronously receives the next visible message. */
     public function receiveMessageAsync(?int $visibilityTimeout = null): PromiseInterface
     {
         return $this->receiveMessagesAsync(1, $visibilityTimeout)
@@ -221,6 +261,10 @@ final class QueueClient
     }
 
     /**
+     * Receives up to the requested number of visible messages.
+     *
+     * @param  int|null  $maxMessages  Maximum messages to receive; Azure Storage accepts 1 through 32.
+     * @param  int|null  $visibilityTimeout  Seconds to hide received messages from other consumers.
      * @return QueueMessage[]
      */
     public function receiveMessages(?int $maxMessages = null, ?int $visibilityTimeout = null): array
@@ -229,6 +273,7 @@ final class QueueClient
         return $this->receiveMessagesAsync($maxMessages, $visibilityTimeout)->wait();
     }
 
+    /** Asynchronously receives a batch of visible messages. */
     public function receiveMessagesAsync(?int $maxMessages = null, ?int $visibilityTimeout = null): PromiseInterface
     {
         $query = [];

@@ -6,6 +6,9 @@ namespace AzureOss\Storage\Blob\Models;
 
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Represents Azure Storage blob copy result data.
+ */
 final class BlobCopyResult
 {
     private function __construct(

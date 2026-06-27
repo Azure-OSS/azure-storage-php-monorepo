@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Sas;
 
+/**
+ * Selects the Azure Storage services accessible through an account SAS.
+ */
 final class AccountSasServices
 {
     public function __construct(

@@ -7,6 +7,9 @@ namespace AzureOss\Storage\Blob\Models;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Middleware\HttpClientOptions;
 
+/**
+ * Configures blob lease client options.
+ */
 final readonly class BlobLeaseClientOptions
 {
     public function __construct(

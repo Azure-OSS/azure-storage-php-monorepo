@@ -45,9 +45,6 @@ final class ClientFactory
         return new Client(array_merge(['handler' => $handlerStack], $options->toGuzzleHttpClientConfig()));
     }
 
-    /**
-     * @see https://learn.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#general-rest-and-retry-guidelines
-     */
     private function createRetryMiddleware(): \Closure
     {
         return GuzzleRetryMiddleware::factory([

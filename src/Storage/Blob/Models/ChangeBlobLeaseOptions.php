@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Blob\Models;
 
+/**
+ * Configures change blob lease options.
+ */
 final class ChangeBlobLeaseOptions
 {
     public function __construct(

@@ -12,6 +12,9 @@ use AzureOss\Storage\Common\Sas\SasIpRange;
 use AzureOss\Storage\Common\Sas\SasProtocol;
 use GuzzleHttp\Psr7\Query;
 
+/**
+ * Builds an Azure Blob Storage service shared access signature (SAS).
+ */
 final class BlobSasBuilder
 {
     private string $version;
@@ -46,11 +49,13 @@ final class BlobSasBuilder
 
     private ?SasProtocol $protocol = null;
 
+    /** Creates an empty blob service SAS builder. */
     public static function new(): self
     {
         return new self;
     }
 
+    /** Sets the container name included in the canonical signed resource. */
     public function setContainerName(string $value): BlobSasBuilder
     {
         $this->containerName = $value;
@@ -58,6 +63,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Sets the blob name, or omits it to create a container SAS. */
     public function setBlobName(string $value): BlobSasBuilder
     {
         $this->blobName = $value;
@@ -65,6 +71,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Sets the instant at which the SAS expires. */
     public function setExpiresOn(\DateTimeInterface $value): self
     {
         $this->expiresOn = $value;
@@ -72,6 +79,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Sets the operations permitted by the SAS. */
     public function setPermissions(string|BlobSasPermissions|BlobContainerSasPermissions $value): self
     {
         $this->permissions = (string) $value;
@@ -79,6 +87,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Associates the SAS with a stored access policy identifier. */
     public function setIdentifier(string $value): self
     {
         $this->identifier = $value;
@@ -86,6 +95,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Sets the earliest instant at which the SAS is valid. */
     public function setStartsOn(\DateTimeInterface $value): self
     {
         $this->startsOn = $value;
@@ -93,6 +103,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Overrides the Cache-Control response header for requests using the SAS. */
     public function setCacheControl(string $value): self
     {
         $this->cacheControl = $value;
@@ -100,6 +111,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Overrides the Content-Disposition response header for requests using the SAS. */
     public function setContentDisposition(string $value): self
     {
         $this->contentDisposition = $value;
@@ -107,6 +119,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Overrides the Content-Encoding response header for requests using the SAS. */
     public function setContentEncoding(string $value): self
     {
         $this->contentEncoding = $value;
@@ -114,6 +127,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Overrides the Content-Language response header for requests using the SAS. */
     public function setContentLanguage(string $value): self
     {
         $this->contentLanguage = $value;
@@ -121,6 +135,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Overrides the Content-Type response header for requests using the SAS. */
     public function setContentType(string $value): self
     {
         $this->contentType = $value;
@@ -128,6 +143,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Sets the encryption scope required for requests authorized by the SAS. */
     public function setEncryptionScope(string $value): self
     {
         $this->encryptionScope = $value;
@@ -135,6 +151,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Restricts requests to the specified source IP address or range. */
     public function setIPRange(SasIpRange $value): self
     {
         $this->ipRange = $value;
@@ -142,6 +159,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Sets the snapshot timestamp for a snapshot-specific SAS. */
     public function setSnapshotTime(\DateTimeInterface $value): self
     {
         $this->snapshotTime = $value;
@@ -149,6 +167,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Restricts requests to HTTPS, or permits both HTTPS and HTTP. */
     public function setProtocol(SasProtocol $value): self
     {
         $this->protocol = $value;
@@ -156,6 +175,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Sets the Storage service version signed by the SAS. */
     public function setVersion(string $value): self
     {
         $this->version = $value;
@@ -163,6 +183,7 @@ final class BlobSasBuilder
         return $this;
     }
 
+    /** Signs and returns the service SAS query string without a leading question mark. */
     public function build(StorageSharedKeyCredential $sharedKeyCredential): string
     {
         if ($this->identifier === null && $this->permissions === null) {

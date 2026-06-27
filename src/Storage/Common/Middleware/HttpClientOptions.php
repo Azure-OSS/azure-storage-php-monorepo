@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Middleware;
 
+/**
+ * Configures http client options.
+ */
 final readonly class HttpClientOptions
 {
     public function __construct(
