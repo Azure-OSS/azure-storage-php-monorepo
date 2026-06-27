@@ -1,0 +1,36 @@
+{
+  "name": "azure-oss/identity",
+  "type": "library",
+  "require": {
+    "php": "^8.1",
+    "php-http/discovery": "^1.20",
+    "psr/http-client": "^1.0",
+    "psr/http-factory": "^1.0",
+    "psr/http-message": "^2.0",
+    "ext-openssl": "*"
+  },
+  "suggest": {
+    "guzzlehttp/guzzle": "Provides a PSR-18 HTTP client and PSR-17 factories (used by default when installed)."
+  },
+  "autoload": {
+    "psr-4": {
+      "AzureOss\\Identity\\": "./"
+    }
+  },
+  "require-dev": {
+    "guzzlehttp/guzzle": "^7.10",
+    "phpstan/phpstan": "^2.1",
+    "phpstan/phpstan-deprecation-rules": "^2.0",
+    "phpstan/phpstan-phpunit": "^2.0",
+    "phpstan/extension-installer": "^1.4",
+    "phpstan/phpstan-strict-rules": "^2.0",
+    "laravel/pint": "^1.27",
+    "phpunit/phpunit": "^13.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "phpstan/extension-installer": true,
+      "php-http/discovery": true
+    }
+  }
+}

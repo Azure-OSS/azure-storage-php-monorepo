@@ -1,4 +1,4 @@
-# Azure Storage PHP Monorepo
+# Azure PHP
 
 Community-driven PHP SDKs for Azure, because Microsoft won't.
 
@@ -15,7 +15,7 @@ You can read the documentation [here](https://azure-oss.github.io).
 
 ## Packages
 
-This monorepo contains the following packages:
+This monorepo contains the documentation site and the following packages:
 
 ### [azure-oss/storage](https://packagist.org/packages/azure-oss/storage) ![Version](https://img.shields.io/packagist/v/azure-oss/storage) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage)
 
@@ -52,8 +52,6 @@ Laravel Queue connector for Azure Storage Queues. Provides integration with Lara
 ### [azure-oss/storage-common](https://packagist.org/packages/azure-oss/storage-common) ![Version](https://img.shields.io/packagist/v/azure-oss/storage-common) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/storage-common)
 
 Common utilities and shared components for the Azure Storage PHP SDK. This package contains reusable functionality used across the Azure Storage Blob, Queue, and related integrations.
-
-## Other packages by us
 
 ### [azure-oss/identity](https://packagist.org/packages/azure-oss/identity) ![Version](https://img.shields.io/packagist/v/azure-oss/identity) ![Total Downloads](https://img.shields.io/packagist/dt/azure-oss/identity)
 

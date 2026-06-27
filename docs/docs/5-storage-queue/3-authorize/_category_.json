@@ -1,0 +1,9 @@
+{
+  "label": "Authorize",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "slug": "/category/storage-queue-authorize",
+    "description": "Authenticate with Azure Storage Queues using Entra ID, access keys, and SAS tokens."
+  }
+}

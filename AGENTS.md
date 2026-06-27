@@ -2,27 +2,28 @@
 
 ## Overview
 
-This repository is a PHP monorepo for the Azure Storage SDKs maintained under the `azure-oss` namespace. The codebase is organized by package inside `src/`, with shared infrastructure extracted into `src/Common` and feature-specific SDKs and integrations layered on top of it. A lightweight meta package also lives in `meta/` and is used for the umbrella `azure-oss/storage` distribution.
+This repository is the PHP monorepo for the community-maintained Azure SDKs under the `azure-oss` namespace. SDK packages are organized by service inside `src/`, with Storage packages under `src/Storage`, Identity under `src/Identity`, and the documentation website under `docs/`.
 
 At the root you will find:
 
 - `composer.json`: the monorepo-level package, shared dependencies, and root autoload setup.
-- `src/`: all package source code.
+- `src/`: all SDK package source code, grouped by Azure service.
 - `tests/`: the test suites, grouped by package.
+- `docs/`: the Docusaurus documentation website, split to `Azure-OSS/azure-oss.github.io`.
 - `infra/`: Azure Bicep templates for provisioning storage resources used during development or validation.
 - `.github/`: repository automation and helper scripts such as subtree/package sync tooling.
 
 ## Source Layout
 
-### `src/BlobSymfony`
+### `src/Storage/BlobSymfony`
 
 Symfony bridge for the Azure Blob Storage Flysystem adapter.
 
-### `src/File/Share`
+### `src/Storage/File/Share`
 
 Azure Storage File Share SDK (Under construction).
 
-### `src/Common`
+### `src/Storage/Common`
 
 Shared primitives used across the storage packages.
 
@@ -34,17 +35,7 @@ Shared primitives used across the storage packages.
 
 This is the lowest-level package in the repo. Blob and queue code depend on it.
 
-### `meta`
-
-The umbrella Composer package published as `azure-oss/storage`.
-
-- Contains package metadata only; there is no runtime source code here.
-- Requires the Blob, Queue and File Share SDK packages so consumers can install a single package.
-- This is the package that should be subtree-split to the main `storage` repository.
-
-Use this package for umbrella package metadata, dependency aggregation, and split-repo docs.
-
-### `src/Blob`
+### `src/Storage/Blob`
 
 The core Azure Blob Storage SDK, published as `azure-oss/storage-blob`.
 
@@ -61,7 +52,7 @@ The core Azure Blob Storage SDK, published as `azure-oss/storage-blob`.
 
 Use this package for changes to the Blob SDK itself.
 
-### `src/Queue`
+### `src/Storage/Queue`
 
 The Azure Storage Queue SDK.
 
@@ -74,7 +65,7 @@ The Azure Storage Queue SDK.
 
 Use this package for queue CRUD, message send/receive/delete, and queue client behavior.
 
-### `src/BlobFlysystem`
+### `src/Storage/BlobFlysystem`
 
 Flysystem integration for Azure Blob Storage.
 
@@ -82,9 +73,9 @@ Flysystem integration for Azure Blob Storage.
 - `Support/`: adapter-specific config parsing and support utilities.
 - `aliases.php`: backwards-compatibility aliases for older Flysystem integration class names.
 
-This layer depends on the Blob SDK and should stay thin: most storage behavior belongs in `src/Blob`, not here.
+This layer depends on the Blob SDK and should stay thin: most storage behavior belongs in `src/Storage/Blob`, not here.
 
-### `src/BlobLaravel`
+### `src/Storage/BlobLaravel`
 
 Laravel filesystem integration built on top of the Flysystem adapter.
 
@@ -94,7 +85,7 @@ Laravel filesystem integration built on top of the Flysystem adapter.
 
 Changes here should focus on Laravel service registration, config handling, and framework integration.
 
-### `src/QueueLaravel`
+### `src/Storage/QueueLaravel`
 
 Laravel queue integration for Azure Storage Queues.
 
@@ -106,40 +97,50 @@ Laravel queue integration for Azure Storage Queues.
 
 Changes here should stay Laravel-specific rather than duplicating queue SDK behavior.
 
+### `src/Identity`
+
+Azure Identity SDK, published as `azure-oss/identity` and split to `Azure-OSS/azure-identity-php`.
+
+### `docs`
+
+Docusaurus documentation website, split to `Azure-OSS/azure-oss.github.io`.
+
 ## Dependency Direction
 
 The packages are layered roughly like this:
 
-`Common` -> `Blob` / `Queue` / `File/Share` -> `BlobFlysystem` -> `BlobLaravel` / `BlobSymfony`
+`Storage/Common` -> `Storage/Blob` / `Storage/Queue` / `Storage/File/Share` -> `Storage/BlobFlysystem` -> `Storage/BlobLaravel` / `Storage/BlobSymfony`
 
-`Common` -> `Blob` -> `QueueLaravel`
+`Identity` -> `Storage/Common`
 
-`meta` -> `Blob` / `Queue` / `File/Share`
+`Storage/Common` -> `Storage/Queue` -> `Storage/QueueLaravel`
 
 In practice:
 
-- Put reusable HTTP/auth/SAS utilities in `src/Common`.
-- Put Azure Blob API behavior in `src/Blob`.
-- Put Azure Queue API behavior in `src/Queue`.
-- Put Azure File Share API behavior in `src/File/Share`.
-- Put umbrella Composer-package wiring in `meta/`.
-- Put Flysystem-specific behavior in `src/BlobFlysystem`.
-- Put Laravel-specific filesystem behavior in `src/BlobLaravel`.
-- Put Laravel-specific queue behavior in `src/QueueLaravel`.
-- Put Symfony-specific behavior in `src/BlobSymfony`.
+- Put reusable Storage HTTP/auth/SAS utilities in `src/Storage/Common`.
+- Put Azure Blob API behavior in `src/Storage/Blob`.
+- Put Azure Queue API behavior in `src/Storage/Queue`.
+- Put Azure File Share API behavior in `src/Storage/File/Share`.
+- Put identity and token credential behavior in `src/Identity`.
+- Put Flysystem-specific behavior in `src/Storage/BlobFlysystem`.
+- Put Laravel-specific filesystem behavior in `src/Storage/BlobLaravel`.
+- Put Laravel-specific queue behavior in `src/Storage/QueueLaravel`.
+- Put Symfony-specific behavior in `src/Storage/BlobSymfony`.
+- Put documentation website behavior and content in `docs/`.
 
 ## Tests
 
 Tests mirror the source packages under `tests/`.
 
-- `tests/Common`
-- `tests/Blob`
-- `tests/Queue`
-- `tests/File/Share`
-- `tests/BlobFlysystem`
-- `tests/BlobLaravel`
-- `tests/QueueLaravel`
-- `tests/BlobSymfony`
+- `tests/Storage/Common`
+- `tests/Storage/Blob`
+- `tests/Storage/Queue`
+- `tests/Storage/File/Share`
+- `tests/Storage/BlobFlysystem`
+- `tests/Storage/BlobLaravel`
+- `tests/Storage/QueueLaravel`
+- `tests/Storage/BlobSymfony`
+- `tests/Identity`
 
 There are also shared test helpers at the top level of `tests/`, such as temporary resource creation traits and retry assertions.
 
@@ -147,10 +148,9 @@ When editing a package, start by checking its matching test directory. Feature t
 
 ## Contributor Notes
 
-- Root autoloading maps `AzureOss\\Storage\\` to `src/`, while individual subpackages also ship their own `composer.json` files where applicable.
+- Root autoloading maps `AzureOss\\Storage\\` to `src/Storage/` and `AzureOss\\Identity\\` to `src/Identity/`, while individual subpackages also ship their own `composer.json` files where applicable.
 - `aliases.php` files are there for backwards compatibility and legacy class-name support, not as a primary extension mechanism.
-- Package READMEs live beside the package code in `src/<Package>/README.md`, with the umbrella package README in `meta/README.md`.
-- The `.github/sync-package.php` script scans package manifests in `src/` and `meta/` and maintains subtree-split metadata for publishable packages.
+- Package READMEs live beside the package code in `src/<Service>/<Package>/README.md`.
 - `infra/*.bicep` contains deployment templates, not runtime application code.
 - Code style is enforced with Laravel Pint via `vendor/bin/pint`, using the rules in `pint.json`.
 - Static analysis is enforced with PHPStan via `vendor/bin/phpstan --no-progress --memory-limit=2G`, configured in `phpstan.neon` at level 10 over `src/` and `tests/`.
@@ -160,8 +160,9 @@ When editing a package, start by checking its matching test directory. Feature t
 
 If you are new to the repo, these are the fastest entry points:
 
-- Blob SDK: start at `src/Blob/BlobServiceClient.php`
-- Queue SDK: start at `src/Queue/QueueServiceClient.php`
-- Shared HTTP/auth stack: start at `src/Common/Middleware/ClientFactory.php`
-- Laravel filesystem integration: start at `src/BlobLaravel/AzureStorageBlobServiceProvider.php`
-- Laravel queue integration: start at `src/QueueLaravel/AzureStorageQueueServiceProvider.php`
+- Blob SDK: start at `src/Storage/Blob/BlobServiceClient.php`
+- Queue SDK: start at `src/Storage/Queue/QueueServiceClient.php`
+- Shared HTTP/auth stack: start at `src/Storage/Common/Middleware/ClientFactory.php`
+- Identity SDK: start at `src/Identity/DefaultAzureCredential.php`
+- Laravel filesystem integration: start at `src/Storage/BlobLaravel/AzureStorageBlobServiceProvider.php`
+- Laravel queue integration: start at `src/Storage/QueueLaravel/AzureStorageQueueServiceProvider.php`

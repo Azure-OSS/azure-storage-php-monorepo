@@ -1,0 +1,8 @@
+{
+  "label": "Storage Blob (Laravel)",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Connect Azure Blob Storage to Laravel's Storage facade with the azure-oss/storage-blob-laravel driver."
+  }
+}

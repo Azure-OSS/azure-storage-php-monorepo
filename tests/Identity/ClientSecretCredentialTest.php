@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace AzureOss\Identity\Tests;
+
+use AzureOss\Identity\AuthenticationFailedException;
+use AzureOss\Identity\ClientSecretCredential;
+use AzureOss\Identity\TokenRequestContext;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+class ClientSecretCredentialTest extends TestCase
+{
+    #[Test]
+    public function get_token_works(): void
+    {
+        $tenantId = getenv('AZURE_TENANT_ID');
+        $clientId = getenv('AZURE_CLIENT_ID');
+        $clientSecret = getenv('AZURE_CLIENT_SECRET');
+
+        if ($tenantId === false || $clientId === false || $clientSecret === false) {
+            self::markTestSkipped('Not all env variables have been set for this test');
+        }
+
+        $credential = new ClientSecretCredential($tenantId, $clientId, $clientSecret);
+        $token = $credential->getToken(new TokenRequestContext(['https://graph.microsoft.com/.default']));
+
+        self::assertGreaterThan(0, strlen($token->token));
+        self::assertGreaterThan((new \DateTimeImmutable)->getTimestamp(), $token->expiresOn->getTimestamp());
+        self::assertEquals('Bearer', $token->tokenType);
+    }
+
+    #[Test]
+    public function get_token_throws_authentication_failed_exception_when_credentials_are_invalid(): void
+    {
+        $this->expectException(AuthenticationFailedException::class);
+
+        (new ClientSecretCredential('invalid', 'invalid', 'invalid'))
+            ->getToken(new TokenRequestContext(['https://graph.microsoft.com/.default']));
+    }
+}

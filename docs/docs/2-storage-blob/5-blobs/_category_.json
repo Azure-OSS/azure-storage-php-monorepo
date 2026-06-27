@@ -1,0 +1,8 @@
+{
+  "label": "Blobs",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Upload, download, copy, list, delete, tag, and manage metadata for blobs."
+  }
+}

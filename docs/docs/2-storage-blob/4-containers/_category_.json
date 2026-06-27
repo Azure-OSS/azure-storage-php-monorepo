@@ -1,0 +1,8 @@
+{
+  "label": "Containers",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Create, list, delete, and manage metadata for blob containers."
+  }
+}

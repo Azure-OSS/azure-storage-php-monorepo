@@ -11,6 +11,8 @@ on:
       - storage-queue-*
       - storage-queue-laravel-*
       - storage-file-share-*
+      - identity-*
+      - docs-*
 
 jobs:
   push-subtrees:
@@ -18,38 +20,46 @@ jobs:
     strategy:
       matrix:
         include:
-          - prefix: src/Common
+          - prefix: src/Storage/Common
             tag_prefix: storage-common
             repo: Azure-OSS/azure-storage-common-php
             secret: DEPLOY_KEY_COMMON
-          - prefix: src/Blob
+          - prefix: src/Storage/Blob
             tag_prefix: storage-blob
             repo: Azure-OSS/azure-storage-blob-php
             secret: DEPLOY_KEY_BLOB
-          - prefix: src/BlobFlysystem
+          - prefix: src/Storage/BlobFlysystem
             tag_prefix: storage-blob-flysystem
             repo: Azure-OSS/azure-storage-blob-flysystem-php
             secret: DEPLOY_KEY_BLOB_FLYSYSTEM
-          - prefix: src/BlobLaravel
+          - prefix: src/Storage/BlobLaravel
             tag_prefix: storage-blob-laravel
             repo: Azure-OSS/azure-storage-blob-laravel-php
             secret: DEPLOY_KEY_BLOB_LARAVEL
-          - prefix: src/BlobSymfony
+          - prefix: src/Storage/BlobSymfony
             tag_prefix: storage-blob-symfony
             repo: Azure-OSS/azure-storage-blob-symfony-php
             secret: DEPLOY_KEY_BLOB_SYMFONY
-          - prefix: src/Queue
+          - prefix: src/Storage/Queue
             tag_prefix: storage-queue
             repo: Azure-OSS/azure-storage-queue-php
             secret: DEPLOY_KEY_QUEUE
-          - prefix: src/QueueLaravel
+          - prefix: src/Storage/QueueLaravel
             tag_prefix: storage-queue-laravel
             repo: Azure-OSS/azure-storage-queue-laravel-php
             secret: DEPLOY_KEY_QUEUE_LARAVEL
-          - prefix: src/File/Share
+          - prefix: src/Storage/File/Share
             tag_prefix: storage-file-share
             repo: Azure-OSS/azure-storage-file-share-php
             secret: DEPLOY_KEY_FILE_SHARE
+          - prefix: src/Identity
+            tag_prefix: identity
+            repo: Azure-OSS/azure-identity-php
+            secret: DEPLOY_KEY_IDENTITY
+          - prefix: docs
+            tag_prefix: docs
+            repo: Azure-OSS/azure-oss.github.io
+            secret: DEPLOY_KEY_DOCS
     steps:
       - name: Match package tag
         id: release

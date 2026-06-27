@@ -1,0 +1,8 @@
+{
+  "label": "Authorize",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Authenticate with Azure Blob Storage using Entra ID, access keys, and SAS tokens."
+  }
+}

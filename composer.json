@@ -1,17 +1,19 @@
 {
-  "name": "azure-oss/storage-monorepo",
-  "description": "Azure Storage PHP SDK",
-  "keywords": ["azure", "storage", "php", "sdk"],
+  "name": "azure-oss/azure-php",
+  "description": "Community-maintained Azure SDKs for PHP",
+  "keywords": ["azure", "identity", "storage", "php", "sdk"],
   "type": "library",
   "license": "MIT",
   "autoload": {
     "psr-4": {
-      "AzureOss\\Storage\\": "src/"
+      "AzureOss\\Identity\\": "src/Identity/",
+      "AzureOss\\Storage\\": "src/Storage/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "AzureOss\\Storage\\Tests\\": "tests/"
+      "AzureOss\\Identity\\Tests\\": "tests/Identity/",
+      "AzureOss\\Storage\\Tests\\": "tests/Storage/"
     }
   },
   "authors": [
@@ -24,28 +26,30 @@
       "email": "pimjansen@gmail.com"
     }
   ],
-  "require": {
+  "require-dev": {
     "php": "^8.2",
     "ext-curl": "*",
     "ext-json": "*",
+    "ext-openssl": "*",
     "ext-simplexml": "*",
-    "azure-oss/identity": "^1.0",
-    "caseyamcl/guzzle_retry_middleware": "^2.10",
-    "guzzlehttp/guzzle": "^7.8"
-  },
-  "require-dev": {
     "ext-zlib": "*",
+    "caseyamcl/guzzle_retry_middleware": "^2.10",
+    "guzzlehttp/guzzle": "^7.8",
     "guzzlehttp/test-server": "^0.6",
     "laravel/pint": "1.29.3",
     "league/flysystem-adapter-test-utilities": "^3.28",
     "league/flysystem-bundle": "^3.7",
     "orchestra/testbench": "^10.11",
+    "php-http/discovery": "^1.20",
     "phpstan/extension-installer": "^1.4",
     "phpstan/phpstan": "^2.2",
     "phpstan/phpstan-deprecation-rules": "^2.0",
     "phpstan/phpstan-phpunit": "^2.0",
     "phpstan/phpstan-strict-rules": "^2.0",
-    "phpunit/phpunit": "^11.5"
+    "phpunit/phpunit": "^11.5",
+    "psr/http-client": "^1.0",
+    "psr/http-factory": "^1.0",
+    "psr/http-message": "^2.0"
   },
   "config": {
     "sort-packages": true,
@@ -53,10 +57,5 @@
       "php-http/discovery": true,
       "phpstan/extension-installer": true
     }
-  },
-  "scripts": {
-    "sync-packages": [
-      "@php .github/sync-package.php"
-    ]
   }
 }
