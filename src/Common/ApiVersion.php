@@ -20,4 +20,9 @@ enum ApiVersion: string
     {
         return self::V2026_06_06;
     }
+
+    public static function latestAzurite(): self
+    {
+        return self::V2025_11_05;
+    }
 }

@@ -8,7 +8,6 @@ use AzureOss\Identity\TokenCredential;
 use AzureOss\Storage\Blob\Exceptions\BlobStorageExceptionDeserializer;
 use AzureOss\Storage\Blob\Exceptions\InvalidConnectionStringException;
 use AzureOss\Storage\Blob\Exceptions\UnableToGenerateSasException;
-use AzureOss\Storage\Blob\Helpers\BlobUriParserHelper;
 use AzureOss\Storage\Blob\Models\BlobContainer;
 use AzureOss\Storage\Blob\Models\BlobContainerClientOptions;
 use AzureOss\Storage\Blob\Models\BlobServiceClientOptions;
@@ -17,6 +16,7 @@ use AzureOss\Storage\Blob\Responses\FindBlobsByTagBody;
 use AzureOss\Storage\Blob\Responses\ListContainersResponseBody;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Helpers\ConnectionStringHelper;
+use AzureOss\Storage\Common\Helpers\StorageUriParserHelper;
 use AzureOss\Storage\Common\Middleware\ClientFactory;
 use AzureOss\Storage\Common\Sas\AccountSasBuilder;
 use AzureOss\Storage\Common\Sas\AccountSasServices;
@@ -138,7 +138,7 @@ final class BlobServiceClient
             throw new UnableToGenerateSasException;
         }
 
-        if (BlobUriParserHelper::isDevelopmentUri($this->uri)) {
+        if (StorageUriParserHelper::isDevelopmentUri($this->uri)) {
             $accountSasBuilder->setProtocol(SasProtocol::HTTPS_AND_HTTP);
         }
 

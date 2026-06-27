@@ -42,7 +42,7 @@ class MockBlobClientTest extends TestCase
     }
 
     #[Test]
-    public function requests_use_latest_api_version_by_default(): void
+    public function requests_use_latest_azurite_api_version_for_development_uri_by_default(): void
     {
         Server::enqueue([
             new Response(200, [
@@ -56,11 +56,11 @@ class MockBlobClientTest extends TestCase
         $requests = Server::received();
 
         self::assertCount(1, $requests);
-        self::assertSame(ApiVersion::latestGA()->value, $requests[0]->getHeaderLine('x-ms-version'));
+        self::assertSame(ApiVersion::latestAzurite()->value, $requests[0]->getHeaderLine('x-ms-version'));
     }
 
     #[Test]
-    public function requests_use_latest_api_version_when_configured_version_is_null(): void
+    public function requests_use_latest_azurite_api_version_for_development_uri_when_configured_version_is_null(): void
     {
         Server::enqueue([
             new Response(200, [
@@ -79,7 +79,7 @@ class MockBlobClientTest extends TestCase
         $requests = Server::received();
 
         self::assertCount(1, $requests);
-        self::assertSame(ApiVersion::latestGA()->value, $requests[0]->getHeaderLine('x-ms-version'));
+        self::assertSame(ApiVersion::latestAzurite()->value, $requests[0]->getHeaderLine('x-ms-version'));
     }
 
     #[Test]

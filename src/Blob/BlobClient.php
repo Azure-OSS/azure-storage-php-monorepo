@@ -29,6 +29,7 @@ use AzureOss\Storage\Blob\Requests\BlobTagsBody;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
 use AzureOss\Storage\Blob\Specialized\BlockBlobClient;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
+use AzureOss\Storage\Common\Helpers\StorageUriParserHelper;
 use AzureOss\Storage\Common\Middleware\ClientFactory;
 use AzureOss\Storage\Common\Sas\SasProtocol;
 use GuzzleHttp\Client;
@@ -454,7 +455,7 @@ final class BlobClient
             throw new UnableToGenerateSasException;
         }
 
-        if (BlobUriParserHelper::isDevelopmentUri($this->uri)) {
+        if (StorageUriParserHelper::isDevelopmentUri($this->uri)) {
             $blobSasBuilder->setProtocol(SasProtocol::HTTPS_AND_HTTP);
         }
 

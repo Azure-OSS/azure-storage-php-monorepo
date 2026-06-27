@@ -9,12 +9,8 @@ use AzureOss\Storage\Common\Middleware\HttpClientOptions;
 
 final readonly class QueueClientOptions
 {
-    public ApiVersion $apiVersion;
-
     public function __construct(
         public HttpClientOptions $httpClientOptions = new HttpClientOptions,
-        ?ApiVersion $apiVersion = null,
-    ) {
-        $this->apiVersion = $apiVersion ?? ApiVersion::latestGA();
-    }
+        public ?ApiVersion $apiVersion = null,
+    ) {}
 }
