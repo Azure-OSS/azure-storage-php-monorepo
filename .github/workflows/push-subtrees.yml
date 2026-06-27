@@ -24,42 +24,52 @@ jobs:
             tag_prefix: storage-common
             repo: Azure-OSS/azure-storage-common-php
             secret: DEPLOY_KEY_COMMON
+            changelog: src/Storage/Common/CHANGELOG.md
           - prefix: src/Storage/Blob
             tag_prefix: storage-blob
             repo: Azure-OSS/azure-storage-blob-php
             secret: DEPLOY_KEY_BLOB
+            changelog: src/Storage/Blob/CHANGELOG.md
           - prefix: src/Storage/BlobFlysystem
             tag_prefix: storage-blob-flysystem
             repo: Azure-OSS/azure-storage-blob-flysystem-php
             secret: DEPLOY_KEY_BLOB_FLYSYSTEM
+            changelog: src/Storage/BlobFlysystem/CHANGELOG.md
           - prefix: src/Storage/BlobLaravel
             tag_prefix: storage-blob-laravel
             repo: Azure-OSS/azure-storage-blob-laravel-php
             secret: DEPLOY_KEY_BLOB_LARAVEL
+            changelog: src/Storage/BlobLaravel/CHANGELOG.md
           - prefix: src/Storage/BlobSymfony
             tag_prefix: storage-blob-symfony
             repo: Azure-OSS/azure-storage-blob-symfony-php
             secret: DEPLOY_KEY_BLOB_SYMFONY
+            changelog: src/Storage/BlobSymfony/CHANGELOG.md
           - prefix: src/Storage/Queue
             tag_prefix: storage-queue
             repo: Azure-OSS/azure-storage-queue-php
             secret: DEPLOY_KEY_QUEUE
+            changelog: src/Storage/Queue/CHANGELOG.md
           - prefix: src/Storage/QueueLaravel
             tag_prefix: storage-queue-laravel
             repo: Azure-OSS/azure-storage-queue-laravel-php
             secret: DEPLOY_KEY_QUEUE_LARAVEL
+            changelog: src/Storage/QueueLaravel/CHANGELOG.md
           - prefix: src/Storage/File/Share
             tag_prefix: storage-file-share
             repo: Azure-OSS/azure-storage-file-share-php
             secret: DEPLOY_KEY_FILE_SHARE
+            changelog: src/Storage/File/Share/CHANGELOG.md
           - prefix: src/Identity
             tag_prefix: identity
             repo: Azure-OSS/azure-identity-php
             secret: DEPLOY_KEY_IDENTITY
+            changelog: src/Identity/CHANGELOG.md
           - prefix: docs
             tag_prefix: docs
             repo: Azure-OSS/azure-oss.github.io
             secret: DEPLOY_KEY_DOCS
+            changelog: ""
     steps:
       - name: Match package tag
         id: release
@@ -75,12 +85,22 @@ jobs:
 
           echo "matched=true" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "split_tag=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Checkout monorepo
         if: steps.release.outputs.matched == 'true'
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Extract release notes
+        if: steps.release.outputs.matched == 'true' && matrix.changelog != ''
+        env:
+          CHANGELOG_PATH: ${{ matrix.changelog }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          php tools/release/extract-changelog-section.php "$CHANGELOG_PATH" "$VERSION" > release-notes.md
+          test -s release-notes.md
 
       - name: Cache splitsh-lite
         if: steps.release.outputs.matched == 'true'
@@ -102,7 +122,7 @@ jobs:
         if: steps.release.outputs.matched == 'true'
         env:
           SSH_KEY: ${{ secrets[matrix.secret] }}
-          VERSION: ${{ steps.release.outputs.version }}
+          SPLIT_TAG: ${{ steps.release.outputs.split_tag }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -114,4 +134,25 @@ jobs:
           SHA=$(splitsh-lite --prefix=${{ matrix.prefix }})
           git push --atomic git@github.com:${{ matrix.repo }}.git \
             +$SHA:refs/heads/main \
-            $SHA:refs/tags/$VERSION
+            $SHA:refs/tags/$SPLIT_TAG
+
+      - name: Create GitHub Release
+        if: steps.release.outputs.matched == 'true' && matrix.changelog != ''
+        env:
+          RELEASE_BOT_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
+          FALLBACK_GITHUB_TOKEN: ${{ github.token }}
+          SPLIT_REPO: ${{ matrix.repo }}
+          SPLIT_TAG: ${{ steps.release.outputs.split_tag }}
+        run: |
+          export GH_TOKEN="${RELEASE_BOT_TOKEN:-$FALLBACK_GITHUB_TOKEN}"
+
+          if gh release view "$SPLIT_TAG" --repo "$SPLIT_REPO" >/dev/null 2>&1; then
+            echo "Release $SPLIT_TAG already exists in $SPLIT_REPO; skipping."
+            exit 0
+          fi
+
+          gh release create "$SPLIT_TAG" \
+            --repo "$SPLIT_REPO" \
+            --title "$SPLIT_TAG" \
+            --notes-file release-notes.md \
+            --verify-tag
