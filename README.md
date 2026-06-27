@@ -59,6 +59,12 @@ Common utilities and shared components for the Azure Storage PHP SDK. This packa
 
 Azure Active Directory (Entra ID) token authentication.
 
+## Acknowledgements
+
+This PHP library takes inspiration from the Azure Storage .NET SDK, particularly in its API design, naming conventions, and overall developer experience.
+
+This project is an independent implementation and is not affiliated with, endorsed by, or maintained by Microsoft.
+
 ## License
 
 This project is released under the MIT License. See [LICENSE](./LICENSE) for details.
