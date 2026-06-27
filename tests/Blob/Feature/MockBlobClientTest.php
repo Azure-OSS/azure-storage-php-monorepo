@@ -643,7 +643,10 @@ class MockBlobClientTest extends TestCase
     public function released_and_broken_lease_results_do_not_fall_back_to_client_lease_id(): void
     {
         Server::enqueue([
-            new Response(200, ['ETag' => '"released"']),
+            new Response(200, [
+                'ETag' => '"released"',
+                'Last-Modified' => 'Wed, 01 Jan 2025 12:34:56 GMT',
+            ]),
             new Response(202, ['x-ms-lease-time' => '0']),
             new Response(501),
         ]);
@@ -653,8 +656,8 @@ class MockBlobClientTest extends TestCase
         $released = $leaseClient->release();
         $broken = $leaseClient->break(0);
 
-        self::assertNull($released->leaseId);
         self::assertSame('"released"', (string) $released->eTag);
+        self::assertSame('Wed, 01 Jan 2025 12:34:56 GMT', $released->lastModified->format('D, d M Y H:i:s T'));
         self::assertNull($broken->leaseId);
         self::assertSame(0, $broken->leaseTime);
     }

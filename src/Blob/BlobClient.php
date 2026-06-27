@@ -18,6 +18,7 @@ use AzureOss\Storage\Blob\Models\BlobCopyResult;
 use AzureOss\Storage\Blob\Models\BlobDownloadStreamingResult;
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
 use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
+use AzureOss\Storage\Blob\Models\BlobLeaseClientOptions;
 use AzureOss\Storage\Blob\Models\BlobProperties;
 use AzureOss\Storage\Blob\Models\BlobRequestConditions;
 use AzureOss\Storage\Blob\Models\CommitBlockListOptions;
@@ -67,7 +68,7 @@ final class BlobClient
     public function __construct(
         public readonly UriInterface $uri,
         public readonly StorageSharedKeyCredential|TokenCredential|null $credential = null,
-        BlobClientOptions $options = new BlobClientOptions,
+        private readonly BlobClientOptions $options = new BlobClientOptions,
     ) {
         $this->containerName = BlobUriParserHelper::getContainerName($uri);
         $this->blobName = BlobUriParserHelper::getBlobName($uri);
@@ -108,7 +109,12 @@ final class BlobClient
 
     public function getBlobLeaseClient(?string $leaseId = null): BlobLeaseClient
     {
-        return new BlobLeaseClient($this->uri, $this->credential, $leaseId);
+        return new BlobLeaseClient(
+            $this->uri,
+            $this->credential,
+            $leaseId,
+            options: new BlobLeaseClientOptions($this->options->httpClientOptions),
+        );
     }
 
     /**

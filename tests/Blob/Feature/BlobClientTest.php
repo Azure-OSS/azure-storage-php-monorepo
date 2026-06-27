@@ -629,7 +629,7 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function start_copy_from_url_throws_if_source_blob_doesnt_exist(): void
     {
-        $sourceContainer = $this->tempContainer();
+        $sourceContainer = $this->tempContainer(public: true);
         $sourceBlobClient = $sourceContainer->getBlobClient('to_copy');
 
         $targetContainer = $this->tempContainer();

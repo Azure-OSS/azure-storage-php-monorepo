@@ -8,10 +8,12 @@ use AzureOss\Identity\TokenCredential;
 use AzureOss\Storage\Blob\Exceptions\BlobStorageExceptionDeserializer;
 use AzureOss\Storage\Blob\Models\AcquireBlobLeaseOptions;
 use AzureOss\Storage\Blob\Models\BlobLease;
+use AzureOss\Storage\Blob\Models\BlobLeaseClientOptions;
 use AzureOss\Storage\Blob\Models\BlobRequestConditions;
 use AzureOss\Storage\Blob\Models\BreakBlobLeaseOptions;
 use AzureOss\Storage\Blob\Models\ChangeBlobLeaseOptions;
 use AzureOss\Storage\Blob\Models\ReleaseBlobLeaseOptions;
+use AzureOss\Storage\Blob\Models\ReleasedObjectInfo;
 use AzureOss\Storage\Blob\Models\RenewBlobLeaseOptions;
 use AzureOss\Storage\Blob\Models\RequestConditionSet;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
@@ -33,9 +35,15 @@ final class BlobLeaseClient
         public readonly StorageSharedKeyCredential|TokenCredential|null $credential = null,
         public ?string $leaseId = null,
         private readonly bool $container = false,
+        private readonly BlobLeaseClientOptions $options = new BlobLeaseClientOptions,
     ) {
         $this->leaseId ??= self::createLeaseId();
-        $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer);
+        $this->client = (new ClientFactory)->create(
+            $uri,
+            $credential,
+            new BlobStorageExceptionDeserializer,
+            $this->options->httpClientOptions,
+        );
     }
 
     public function acquire(int $durationSeconds = self::INFINITE_LEASE_DURATION, AcquireBlobLeaseOptions $options = new AcquireBlobLeaseOptions): BlobLease
@@ -115,7 +123,7 @@ final class BlobLeaseClient
         });
     }
 
-    public function release(ReleaseBlobLeaseOptions $options = new ReleaseBlobLeaseOptions): BlobLease
+    public function release(ReleaseBlobLeaseOptions $options = new ReleaseBlobLeaseOptions): ReleasedObjectInfo
     {
         /** @phpstan-ignore-next-line */
         return $this->releaseAsync($options)->wait();
@@ -135,7 +143,7 @@ final class BlobLeaseClient
                 'x-ms-lease-action' => 'release',
                 'x-ms-lease-id' => $this->leaseId,
             ],
-        ])->then(fn (ResponseInterface $response): BlobLease => BlobLease::fromResponse($response));
+        ])->then(ReleasedObjectInfo::fromResponse(...));
     }
 
     public function break(?int $breakPeriodSeconds = null, BreakBlobLeaseOptions $options = new BreakBlobLeaseOptions): BlobLease

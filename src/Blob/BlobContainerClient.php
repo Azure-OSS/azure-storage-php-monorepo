@@ -16,6 +16,7 @@ use AzureOss\Storage\Blob\Models\BlobClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerClientOptions;
 use AzureOss\Storage\Blob\Models\BlobContainerProperties;
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
+use AzureOss\Storage\Blob\Models\BlobLeaseClientOptions;
 use AzureOss\Storage\Blob\Models\BlobPrefix;
 use AzureOss\Storage\Blob\Models\CreateContainerOptions;
 use AzureOss\Storage\Blob\Models\DeleteContainerOptions;
@@ -82,7 +83,13 @@ final class BlobContainerClient
 
     public function getBlobLeaseClient(?string $leaseId = null): BlobLeaseClient
     {
-        return new BlobLeaseClient($this->uri, $this->credential, $leaseId, container: true);
+        return new BlobLeaseClient(
+            $this->uri,
+            $this->credential,
+            $leaseId,
+            container: true,
+            options: new BlobLeaseClientOptions($this->options->httpClientOptions),
+        );
     }
 
     private function getBlobUri(string $blobName): UriInterface
