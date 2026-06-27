@@ -22,6 +22,7 @@ use AzureOss\Storage\Blob\Models\DeleteContainerOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
 use AzureOss\Storage\Blob\Models\GetContainerPropertiesOptions;
 use AzureOss\Storage\Blob\Models\PublicAccessType;
+use AzureOss\Storage\Blob\Models\RequestConditionSet;
 use AzureOss\Storage\Blob\Models\SetContainerMetadataOptions;
 use AzureOss\Storage\Blob\Models\TaggedBlob;
 use AzureOss\Storage\Blob\Responses\FindBlobsByTagBody;
@@ -145,17 +146,14 @@ final class BlobContainerClient
 
     public function deleteAsync(DeleteContainerOptions $options = new DeleteContainerOptions): PromiseInterface
     {
-        $options->conditions?->assertSupported(
-            'BlobContainerClient::delete',
-            ifMatch: false,
-            ifNoneMatch: false,
-        );
-
         return $this->client->deleteAsync($this->uri, [
             RequestOptions::QUERY => [
                 'restype' => 'container',
             ],
-            RequestOptions::HEADERS => $options->conditions?->toHeaders(ifMatch: false, ifNoneMatch: false) ?? [],
+            RequestOptions::HEADERS => $options->conditions?->toHeaders(
+                'BlobContainerClient::delete',
+                RequestConditionSet::DATES_AND_LEASE,
+            ) ?? [],
         ]);
     }
 
@@ -208,24 +206,14 @@ final class BlobContainerClient
 
     public function getPropertiesAsync(GetContainerPropertiesOptions $options = new GetContainerPropertiesOptions): PromiseInterface
     {
-        $options->conditions?->assertSupported(
-            'BlobContainerClient::getProperties',
-            ifMatch: false,
-            ifModifiedSince: false,
-            ifNoneMatch: false,
-            ifUnmodifiedSince: false,
-        );
-
         return $this->client
             ->headAsync($this->uri, [
                 RequestOptions::QUERY => [
                     'restype' => 'container',
                 ],
                 RequestOptions::HEADERS => $options->conditions?->toHeaders(
-                    ifMatch: false,
-                    ifModifiedSince: false,
-                    ifNoneMatch: false,
-                    ifUnmodifiedSince: false,
+                    'BlobContainerClient::getProperties',
+                    RequestConditionSet::LEASE_ONLY,
                 ) ?? [],
             ])
             ->then(BlobContainerProperties::fromResponseHeaders(...));
@@ -244,13 +232,6 @@ final class BlobContainerClient
      */
     public function setMetadataAsync(array $metadata, SetContainerMetadataOptions $options = new SetContainerMetadataOptions): PromiseInterface
     {
-        $options->conditions?->assertSupported(
-            'BlobContainerClient::setMetadata',
-            ifMatch: false,
-            ifNoneMatch: false,
-            ifUnmodifiedSince: false,
-        );
-
         return $this->client->putAsync($this->uri, [
             RequestOptions::QUERY => [
                 'restype' => 'container',
@@ -259,9 +240,8 @@ final class BlobContainerClient
             RequestOptions::HEADERS => [
                 ...MetadataHelper::metadataToHeaders($metadata),
                 ...($options->conditions?->toHeaders(
-                    ifMatch: false,
-                    ifNoneMatch: false,
-                    ifUnmodifiedSince: false,
+                    'BlobContainerClient::setMetadata',
+                    RequestConditionSet::MODIFIED_SINCE_AND_LEASE,
                 ) ?? []),
             ],
         ]);

@@ -18,36 +18,27 @@ final class BlobRequestConditions
 
     /**
      * @internal
+     *
+     * @return array<string, string>
      */
-    public function assertSupported(
+    public function toHeaders(
         string $operation,
-        bool $ifMatch = true,
-        bool $ifModifiedSince = true,
-        bool $ifNoneMatch = true,
-        bool $ifUnmodifiedSince = true,
-        bool $leaseId = true,
-    ): void {
-        $unsupported = [];
-
-        if (! $ifMatch && $this->ifMatch !== null) {
-            $unsupported[] = 'ifMatch';
-        }
-
-        if (! $ifModifiedSince && $this->ifModifiedSince !== null) {
-            $unsupported[] = 'ifModifiedSince';
-        }
-
-        if (! $ifNoneMatch && $this->ifNoneMatch !== null) {
-            $unsupported[] = 'ifNoneMatch';
-        }
-
-        if (! $ifUnmodifiedSince && $this->ifUnmodifiedSince !== null) {
-            $unsupported[] = 'ifUnmodifiedSince';
-        }
-
-        if (! $leaseId && $this->leaseId !== null) {
-            $unsupported[] = 'leaseId';
-        }
+        RequestConditionSet $set,
+        string $prefix = '',
+    ): array {
+        $values = [
+            'ifMatch' => $this->ifMatch,
+            'ifModifiedSince' => $this->ifModifiedSince,
+            'ifNoneMatch' => $this->ifNoneMatch,
+            'ifUnmodifiedSince' => $this->ifUnmodifiedSince,
+            'leaseId' => $this->leaseId,
+        ];
+        $supported = array_flip($set->properties());
+        $unsupported = array_keys(array_filter(
+            $values,
+            fn (mixed $value, string $property): bool => $value !== null && ! isset($supported[$property]),
+            ARRAY_FILTER_USE_BOTH,
+        ));
 
         if ($unsupported !== []) {
             throw new \InvalidArgumentException(sprintf(
@@ -56,21 +47,7 @@ final class BlobRequestConditions
                 implode(', ', $unsupported),
             ));
         }
-    }
 
-    /**
-     * @internal
-     *
-     * @return array<string, string>
-     */
-    public function toHeaders(
-        bool $ifMatch = true,
-        bool $ifModifiedSince = true,
-        bool $ifNoneMatch = true,
-        bool $ifUnmodifiedSince = true,
-        bool $leaseId = true,
-        string $prefix = '',
-    ): array {
         $headerNames = $prefix === '' ? [
             'ifMatch' => 'If-Match',
             'ifModifiedSince' => 'If-Modified-Since',
@@ -86,11 +63,11 @@ final class BlobRequestConditions
         ];
 
         return array_filter([
-            $headerNames['ifMatch'] => $ifMatch && $this->ifMatch !== null ? (string) $this->ifMatch : null,
-            $headerNames['ifModifiedSince'] => $ifModifiedSince && $this->ifModifiedSince !== null ? self::formatDate($this->ifModifiedSince) : null,
-            $headerNames['ifNoneMatch'] => $ifNoneMatch && $this->ifNoneMatch !== null ? (string) $this->ifNoneMatch : null,
-            $headerNames['ifUnmodifiedSince'] => $ifUnmodifiedSince && $this->ifUnmodifiedSince !== null ? self::formatDate($this->ifUnmodifiedSince) : null,
-            $headerNames['leaseId'] => $leaseId ? $this->leaseId : null,
+            $headerNames['ifMatch'] => isset($supported['ifMatch']) && $this->ifMatch !== null ? (string) $this->ifMatch : null,
+            $headerNames['ifModifiedSince'] => isset($supported['ifModifiedSince']) && $this->ifModifiedSince !== null ? self::formatDate($this->ifModifiedSince) : null,
+            $headerNames['ifNoneMatch'] => isset($supported['ifNoneMatch']) && $this->ifNoneMatch !== null ? (string) $this->ifNoneMatch : null,
+            $headerNames['ifUnmodifiedSince'] => isset($supported['ifUnmodifiedSince']) && $this->ifUnmodifiedSince !== null ? self::formatDate($this->ifUnmodifiedSince) : null,
+            $headerNames['leaseId'] => isset($supported['leaseId']) ? $this->leaseId : null,
         ], fn (?string $value): bool => $value !== null);
     }
 

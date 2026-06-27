@@ -15,7 +15,11 @@ use AzureOss\Storage\Blob\Models\GetBlobTagsOptions;
 use AzureOss\Storage\Blob\Models\GetContainerPropertiesOptions;
 use AzureOss\Storage\Blob\Models\SetBlobTagsOptions;
 use AzureOss\Storage\Blob\Models\SetContainerMetadataOptions;
+use AzureOss\Storage\Blob\Models\StageBlockOptions;
+use AzureOss\Storage\Blob\Models\StartCopyFromUriOptions;
+use AzureOss\Storage\Blob\Models\SyncCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
+use AzureOss\Storage\Blob\Specialized\BlockBlobClient;
 use AzureOss\Storage\Common\Models\ETag;
 use AzureOss\Storage\Tests\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
@@ -586,6 +590,73 @@ class MockBlobClientTest extends TestCase
         $this->blob->abortCopyFromUri('copy-id', new AbortCopyFromUriOptions(new BlobRequestConditions(
             ifMatch: new ETag('"match"'),
         )));
+    }
+
+    #[Test]
+    public function start_copy_from_uri_rejects_source_lease_id(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobClient::startCopyFromUri source does not support request condition(s): leaseId.');
+
+        $this->blob->startCopyFromUri(
+            new Uri('https://example.com/source'),
+            new StartCopyFromUriOptions(
+                sourceConditions: new BlobRequestConditions(
+                    leaseId: '11111111-1111-4111-8111-111111111111',
+                ),
+            ),
+        );
+    }
+
+    #[Test]
+    public function sync_copy_from_uri_rejects_source_lease_id(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlobClient::syncCopyFromUri source does not support request condition(s): leaseId.');
+
+        $this->blob->syncCopyFromUri(
+            new Uri('https://example.com/source'),
+            new SyncCopyFromUriOptions(
+                sourceConditions: new BlobRequestConditions(
+                    leaseId: '11111111-1111-4111-8111-111111111111',
+                ),
+            ),
+        );
+    }
+
+    #[Test]
+    public function stage_block_rejects_non_lease_conditions(): void
+    {
+        $blockBlob = new BlockBlobClient($this->blob->uri);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('BlockBlobClient::stageBlock does not support request condition(s): ifMatch.');
+
+        $blockBlob->stageBlock(
+            base64_encode('block-1'),
+            'content',
+            new StageBlockOptions(new BlobRequestConditions(ifMatch: new ETag('"match"'))),
+        );
+    }
+
+    #[Test]
+    public function released_and_broken_lease_results_do_not_fall_back_to_client_lease_id(): void
+    {
+        Server::enqueue([
+            new Response(200, ['ETag' => '"released"']),
+            new Response(202, ['x-ms-lease-time' => '0']),
+            new Response(501),
+        ]);
+
+        $leaseClient = $this->blob->getBlobLeaseClient('11111111-1111-4111-8111-111111111111');
+
+        $released = $leaseClient->release();
+        $broken = $leaseClient->break(0);
+
+        self::assertNull($released->leaseId);
+        self::assertSame('"released"', (string) $released->eTag);
+        self::assertNull($broken->leaseId);
+        self::assertSame(0, $broken->leaseTime);
     }
 
     #[Test]

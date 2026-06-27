@@ -11,6 +11,7 @@ use AzureOss\Storage\Blob\Helpers\BlobUriParserHelper;
 use AzureOss\Storage\Blob\Helpers\HashHelper;
 use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
 use AzureOss\Storage\Blob\Models\CommitBlockListOptions;
+use AzureOss\Storage\Blob\Models\RequestConditionSet;
 use AzureOss\Storage\Blob\Models\StageBlockOptions;
 use AzureOss\Storage\Blob\Requests\PutBlockRequestBody;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
@@ -50,14 +51,6 @@ final class BlockBlobClient
 
     public function stageBlockAsync(string $base64BlockId, StreamInterface|string $content, StageBlockOptions $options = new StageBlockOptions): PromiseInterface
     {
-        $options->conditions?->assertSupported(
-            'BlockBlobClient::stageBlock',
-            ifMatch: false,
-            ifModifiedSince: false,
-            ifNoneMatch: false,
-            ifUnmodifiedSince: false,
-        );
-
         $stream = Utils::streamFor($content);
 
         $md5 = Utils::hash($stream, 'md5', true);
@@ -72,10 +65,8 @@ final class BlockBlobClient
                     'Content-MD5' => HashHelper::serializeMd5($md5),
                     'Content-Length' => (string) $stream->getSize(),
                     ...($options->conditions?->toHeaders(
-                        ifMatch: false,
-                        ifModifiedSince: false,
-                        ifNoneMatch: false,
-                        ifUnmodifiedSince: false,
+                        'BlockBlobClient::stageBlock',
+                        RequestConditionSet::LEASE_ONLY,
                     ) ?? []),
                 ],
                 'body' => $content,
@@ -102,7 +93,7 @@ final class BlockBlobClient
                 ],
                 RequestOptions::HEADERS => [
                     ...$options->httpHeaders->toArray(),
-                    ...($options->conditions?->toHeaders() ?? []),
+                    ...($options->conditions?->toHeaders('BlockBlobClient::commitBlockList', RequestConditionSet::ALL) ?? []),
                 ],
                 'body' => (new PutBlockRequestBody($base64BlockIds))->toXml()->asXML(),
             ]);

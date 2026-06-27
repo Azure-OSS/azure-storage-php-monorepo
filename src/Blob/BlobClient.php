@@ -26,6 +26,7 @@ use AzureOss\Storage\Blob\Models\DeleteBlobOptions;
 use AzureOss\Storage\Blob\Models\DownloadBlobOptions;
 use AzureOss\Storage\Blob\Models\GetBlobPropertiesOptions;
 use AzureOss\Storage\Blob\Models\GetBlobTagsOptions;
+use AzureOss\Storage\Blob\Models\RequestConditionSet;
 use AzureOss\Storage\Blob\Models\SetBlobHttpHeadersOptions;
 use AzureOss\Storage\Blob\Models\SetBlobMetadataOptions;
 use AzureOss\Storage\Blob\Models\SetBlobTagsOptions;
@@ -85,7 +86,7 @@ final class BlobClient
         return $this->client
             ->getAsync($this->uri, [
                 RequestOptions::STREAM => true,
-                RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::downloadStreaming', RequestConditionSet::ALL) ?? [],
             ])
             ->then(BlobDownloadStreamingResult::fromResponse(...));
     }
@@ -100,7 +101,7 @@ final class BlobClient
     {
         return $this->client
             ->headAsync($this->uri, [
-                RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::getProperties', RequestConditionSet::ALL) ?? [],
             ])
             ->then(BlobProperties::fromResponseHeaders(...));
     }
@@ -130,7 +131,7 @@ final class BlobClient
                 ],
                 RequestOptions::HEADERS => [
                     ...MetadataHelper::metadataToHeaders($metadata),
-                    ...($options->conditions?->toHeaders() ?? []),
+                    ...($options->conditions?->toHeaders('BlobClient::setMetadata', RequestConditionSet::ALL) ?? []),
                 ],
             ]);
     }
@@ -154,7 +155,7 @@ final class BlobClient
             RequestOptions::QUERY => ['comp' => 'properties'],
             RequestOptions::HEADERS => [
                 ...$httpHeaders->toArray(),
-                ...($options->conditions?->toHeaders() ?? []),
+                ...($options->conditions?->toHeaders('BlobClient::setHttpHeaders', RequestConditionSet::ALL) ?? []),
             ],
         ]);
     }
@@ -167,7 +168,7 @@ final class BlobClient
     public function deleteAsync(DeleteBlobOptions $options = new DeleteBlobOptions): PromiseInterface
     {
         return $this->client->deleteAsync($this->uri, [
-            RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
+            RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::delete', RequestConditionSet::ALL) ?? [],
         ]);
     }
 
@@ -247,7 +248,7 @@ final class BlobClient
                     'x-ms-blob-type' => 'BlockBlob',
                     'Content-Length' => $content->getSize() === null ? null : (string) $content->getSize(),
                     ...$httpHeaders->toArray(),
-                    ...($conditions?->toHeaders() ?? []),
+                    ...($conditions?->toHeaders('BlobClient::upload', RequestConditionSet::ALL) ?? []),
                 ], fn ($value) => $value !== null),
                 RequestOptions::BODY => $content,
             ]);
@@ -364,18 +365,20 @@ final class BlobClient
      */
     public function syncCopyFromUriAsync(UriInterface $source, SyncCopyFromUriOptions $options = new SyncCopyFromUriOptions): PromiseInterface
     {
-        $options->sourceConditions?->assertSupported(
-            'BlobClient::syncCopyFromUri source',
-            leaseId: false,
-        );
-
         return $this->client
             ->putAsync($this->uri, [
                 'headers' => [
                     'x-ms-copy-source' => (string) $source,
                     'x-ms-requires-sync' => 'true',
-                    ...($options->destinationConditions?->toHeaders() ?? []),
-                    ...($options->sourceConditions?->toHeaders(leaseId: false, prefix: 'x-ms-source-') ?? []),
+                    ...($options->destinationConditions?->toHeaders(
+                        'BlobClient::syncCopyFromUri destination',
+                        RequestConditionSet::ALL,
+                    ) ?? []),
+                    ...($options->sourceConditions?->toHeaders(
+                        'BlobClient::syncCopyFromUri source',
+                        RequestConditionSet::HTTP_ONLY,
+                        prefix: 'x-ms-source-',
+                    ) ?? []),
                 ],
             ])
             ->then(BlobCopyResult::fromResponse(...));
@@ -395,17 +398,19 @@ final class BlobClient
      */
     public function startCopyFromUriAsync(UriInterface $source, StartCopyFromUriOptions $options = new StartCopyFromUriOptions): PromiseInterface
     {
-        $options->sourceConditions?->assertSupported(
-            'BlobClient::startCopyFromUri source',
-            leaseId: false,
-        );
-
         return $this->client
             ->putAsync($this->uri, [
                 RequestOptions::HEADERS => [
                     'x-ms-copy-source' => (string) $source,
-                    ...($options->destinationConditions?->toHeaders() ?? []),
-                    ...($options->sourceConditions?->toHeaders(leaseId: false, prefix: 'x-ms-source-') ?? []),
+                    ...($options->destinationConditions?->toHeaders(
+                        'BlobClient::startCopyFromUri destination',
+                        RequestConditionSet::ALL,
+                    ) ?? []),
+                    ...($options->sourceConditions?->toHeaders(
+                        'BlobClient::startCopyFromUri source',
+                        RequestConditionSet::HTTP_ONLY,
+                        prefix: 'x-ms-source-',
+                    ) ?? []),
                 ],
             ])
             ->then(BlobCopyResult::fromResponse(...));
@@ -424,14 +429,6 @@ final class BlobClient
      */
     public function abortCopyFromUriAsync(string $copyId, AbortCopyFromUriOptions $options = new AbortCopyFromUriOptions): PromiseInterface
     {
-        $options->conditions?->assertSupported(
-            'BlobClient::abortCopyFromUri',
-            ifMatch: false,
-            ifModifiedSince: false,
-            ifNoneMatch: false,
-            ifUnmodifiedSince: false,
-        );
-
         return $this->client
             ->putAsync($this->uri, [
                 'query' => [
@@ -441,10 +438,8 @@ final class BlobClient
                 'headers' => [
                     'x-ms-copy-action' => 'abort',
                     ...($options->conditions?->toHeaders(
-                        ifMatch: false,
-                        ifModifiedSince: false,
-                        ifNoneMatch: false,
-                        ifUnmodifiedSince: false,
+                        'BlobClient::abortCopyFromUri',
+                        RequestConditionSet::LEASE_ONLY,
                     ) ?? []),
                 ],
             ]);
@@ -550,7 +545,7 @@ final class BlobClient
                 RequestOptions::QUERY => [
                     'comp' => 'tags',
                 ],
-                RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::setTags', RequestConditionSet::ALL) ?? [],
                 RequestOptions::BODY => (new BlobTagsBody($tags))->toXml()->asXML(),
             ]);
     }
@@ -571,7 +566,7 @@ final class BlobClient
                 RequestOptions::QUERY => [
                     'comp' => 'tags',
                 ],
-                RequestOptions::HEADERS => $options->conditions?->toHeaders() ?? [],
+                RequestOptions::HEADERS => $options->conditions?->toHeaders('BlobClient::getTags', RequestConditionSet::ALL) ?? [],
             ])
             ->then(
                 fn (ResponseInterface $response) => BlobTagsBody::fromXml(new \SimpleXMLElement($response->getBody()->getContents()))->tags,
