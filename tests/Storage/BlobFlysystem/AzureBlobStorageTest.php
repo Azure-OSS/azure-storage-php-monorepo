@@ -12,6 +12,7 @@ use League\Flysystem\AdapterTestUtilities\FilesystemAdapterTestCase;
 use League\Flysystem\Config;
 use League\Flysystem\FilesystemAdapter;
 use League\Flysystem\UnableToSetVisibility;
+use League\Flysystem\UnableToWriteFile;
 use League\Flysystem\Visibility;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -193,6 +194,93 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
             ->getProperties();
 
         self::assertSame('public, max-age=31536000', $properties->cacheControl);
+    }
+
+    #[Test]
+    public function it_can_conditionally_overwrite_a_file_using_an_etag(): void
+    {
+        $adapter = $this->adapter();
+        $adapter->write('conditional-etag.txt', 'original', new Config);
+
+        $blob = self::createContainerClient()
+            ->getBlobClient(self::$containerName.'/conditional-etag.txt');
+        $eTag = $blob->getProperties()->eTag;
+        self::assertNotNull($eTag);
+
+        $adapter->write('conditional-etag.txt', 'updated', new Config([
+            'conditions' => ['ifMatch' => (string) $eTag],
+        ]));
+        self::assertSame('updated', $adapter->read('conditional-etag.txt'));
+
+        try {
+            $adapter->write('conditional-etag.txt', 'stale update', new Config([
+                'conditions' => ['ifMatch' => (string) $eTag],
+            ]));
+            self::fail('Expected a stale ETag write to fail.');
+        } catch (UnableToWriteFile) {
+            self::assertSame('updated', $adapter->read('conditional-etag.txt'));
+        }
+    }
+
+    #[Test]
+    public function it_can_require_a_file_not_to_exist(): void
+    {
+        $adapter = $this->adapter();
+        $conditions = new Config([
+            'conditions' => ['ifNoneMatch' => '*'],
+        ]);
+
+        $adapter->write('create-only.txt', 'original', $conditions);
+
+        try {
+            $adapter->write('create-only.txt', 'overwrite', $conditions);
+            self::fail('Expected overwriting an existing file to fail.');
+        } catch (UnableToWriteFile) {
+            self::assertSame('original', $adapter->read('create-only.txt'));
+        }
+    }
+
+    #[Test]
+    public function it_can_write_to_a_leased_blob_using_the_lease_id(): void
+    {
+        $adapter = $this->adapter();
+        $adapter->write('conditional-lease.txt', 'original', new Config);
+
+        $blob = self::createContainerClient()
+            ->getBlobClient(self::$containerName.'/conditional-lease.txt');
+        $leaseClient = $blob->getBlobLeaseClient();
+        $lease = $leaseClient->acquire(15);
+        self::assertNotNull($lease->leaseId);
+
+        try {
+            $adapter->write('conditional-lease.txt', 'updated', new Config([
+                'conditions' => ['leaseId' => $lease->leaseId],
+            ]));
+
+            self::assertSame('updated', $adapter->read('conditional-lease.txt'));
+        } finally {
+            $leaseClient->release();
+        }
+    }
+
+    #[Test]
+    public function it_rejects_an_invalid_write_conditions_option(): void
+    {
+        $adapter = $this->adapter();
+
+        try {
+            $adapter->write('invalid-conditions.txt', 'content', new Config([
+                'conditions' => 'invalid',
+            ]));
+            self::fail('Expected invalid write conditions to fail.');
+        } catch (UnableToWriteFile $exception) {
+            $previous = $exception->getPrevious();
+            self::assertInstanceOf(\RuntimeException::class, $previous);
+            self::assertSame(
+                'conditions must be an array.',
+                $previous->getMessage(),
+            );
+        }
     }
 
     #[Test]

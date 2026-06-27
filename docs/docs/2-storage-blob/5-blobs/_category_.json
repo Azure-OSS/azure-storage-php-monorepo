@@ -3,6 +3,6 @@
   "position": 4,
   "link": {
     "type": "generated-index",
-    "description": "Upload, download, copy, list, delete, tag, and manage metadata for blobs."
+    "description": "Upload, download, copy, list, delete, tag, manage metadata, and coordinate conditional access to blobs."
   }
 }

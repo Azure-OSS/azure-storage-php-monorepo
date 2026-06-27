@@ -63,22 +63,20 @@ $filesystem->delete('docs/hello.txt');
 
 ## Upload Options (HTTP Headers)
 
-You can pass Azure upload options via Flysystem `Config`, including HTTP headers like `Cache-Control`:
+You can pass Azure upload options through the third argument of `write()` or `writeStream()`, including HTTP headers like `Cache-Control`:
 
 ```php
-use League\Flysystem\Config;
-
 $css = 'body { color: #0f172a; }';
 
 $filesystem->write(
     'assets/app.css',
     $css,
-    new Config([
+    [
         'httpHeaders' => [
             'cacheControl' => 'public, max-age=31536000',
             'contentType' => 'text/css',
         ],
-    ])
+    ]
 );
 ```
 
@@ -96,6 +94,22 @@ The adapter also supports these upload tuning keys:
 - `initialTransferSize` (int)
 - `maximumTransferSize` (int)
 - `maximumConcurrency` (int)
+
+## Conditional Writes
+
+Pass conditions through the `conditions` write option. For example, the wildcard ETag can ensure that a write only succeeds when the file does not already exist:
+
+```php
+$filesystem->write('documents/report.json', $contents, [
+    'conditions' => [
+        'ifNoneMatch' => '*',
+    ],
+]);
+```
+
+Supported condition keys are `ifMatch`, `ifNoneMatch`, and `leaseId`.
+
+For more advanced optimistic-concurrency scenarios, use the lower-level Blob client to retrieve an existing ETag and pass its string value as `ifMatch`. Lease IDs and lease lifecycle operations are also available through the lower-level Blob and lease clients. Conditional reads, deletes, and copies are not exposed by the Flysystem adapter.
 
 ## Public And Temporary URLs
 

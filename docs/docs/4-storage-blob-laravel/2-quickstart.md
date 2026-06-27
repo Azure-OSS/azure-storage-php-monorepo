@@ -113,6 +113,24 @@ Storage::disk('azure')->put('assets/app.css', $css, [
 ]);
 ```
 
+## Conditional Writes
+
+Pass conditions to `put()`. For example, the wildcard ETag can ensure that a write only succeeds when the file does not already exist:
+
+```php
+use Illuminate\Support\Facades\Storage;
+
+Storage::disk('azure')->put('documents/report.json', $contents, [
+    'conditions' => [
+        'ifNoneMatch' => '*',
+    ],
+]);
+```
+
+Supported condition keys are `ifMatch`, `ifNoneMatch`, and `leaseId`.
+
+For more advanced optimistic-concurrency scenarios, use the lower-level Blob client to retrieve an existing ETag and pass its string value as `ifMatch`. Lease IDs and lease lifecycle operations are also available through the lower-level Blob and lease clients. Set `throw` to `true` in the disk configuration when the application needs to handle failed conditions or lease mismatches as exceptions.
+
 ## Notes
 
 - When using Microsoft Entra ID credentials, the disk cannot generate SAS URLs (`providesTemporaryUrls()` returns `false`).

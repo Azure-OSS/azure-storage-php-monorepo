@@ -11,6 +11,7 @@ use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\UnableToWriteFile;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -249,6 +250,54 @@ class AzureStorageBlobAdapterTest extends TestCase
         self::assertCount(4, $driver->allFiles());
         $driver->deleteDirectory('');
         self::assertCount(0, $driver->allFiles());
+    }
+
+    #[Test]
+    public function put_supports_etag_and_lease_write_conditions(): void
+    {
+        $container = $this->tempContainer('laravel-');
+
+        config([
+            'filesystems.disks.azure' => [
+                'driver' => 'azure-storage-blob',
+                'connection_string' => getenv('AZURE_STORAGE_CONNECTION_STRING'),
+                'container' => $container->containerName,
+                'throw' => true,
+            ],
+        ]);
+
+        $driver = Storage::disk('azure');
+        self::assertTrue($driver->put('conditional.txt', 'original'));
+
+        $blob = $container->getBlobClient('conditional.txt');
+        $eTag = $blob->getProperties()->eTag;
+        self::assertNotNull($eTag);
+
+        self::assertTrue($driver->put('conditional.txt', 'etag update', [
+            'conditions' => ['ifMatch' => (string) $eTag],
+        ]));
+
+        try {
+            $driver->put('conditional.txt', 'stale update', [
+                'conditions' => ['ifMatch' => (string) $eTag],
+            ]);
+            self::fail('Expected a stale ETag write to fail.');
+        } catch (UnableToWriteFile) {
+            self::assertSame('etag update', $driver->get('conditional.txt'));
+        }
+
+        $leaseClient = $blob->getBlobLeaseClient();
+        $lease = $leaseClient->acquire(15);
+        self::assertNotNull($lease->leaseId);
+
+        try {
+            self::assertTrue($driver->put('conditional.txt', 'lease update', [
+                'conditions' => ['leaseId' => $lease->leaseId],
+            ]));
+            self::assertSame('lease update', $driver->get('conditional.txt'));
+        } finally {
+            $leaseClient->release();
+        }
     }
 
     #[Test]
