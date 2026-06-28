@@ -30,6 +30,8 @@ final class Blob
         public readonly ?array $metadata = null,
         /** @var array<string, string>|null Blob index tags, or null when tags were not returned. */
         public readonly ?array $tags = null,
+        /** Indicates whether the listed item represents a deleted base blob that still has versions. */
+        public readonly ?bool $hasVersionsOnly = null,
     ) {}
 
     public static function fromXml(\SimpleXMLElement $xml): self
@@ -53,6 +55,7 @@ final class Blob
             self::deserializeBool($xml->IsCurrentVersion),
             $metadata,
             $tags,
+            self::deserializeBool($xml->HasVersionsOnly),
         );
     }
 

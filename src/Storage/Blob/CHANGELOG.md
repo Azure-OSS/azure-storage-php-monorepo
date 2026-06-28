@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added `BlobInclude` and support for requesting snapshots, metadata, uncommitted blobs, copy information, deleted blobs, tags, and versions from `BlobContainerClient::getBlobs()` and `getBlobsByHierarchy()`.
+- Added `BlobInclude` and support for requesting snapshots, metadata, uncommitted blobs, copy information, deleted blobs, tags, versions, and deleted blobs with versions from `BlobContainerClient::getBlobs()` and `getBlobsByHierarchy()`.
 - Added list-response snapshot, metadata, tags, version, and deletion state to `Blob`.
 - Added `BlobClient::undelete()` and `undeleteAsync()` for restoring soft-deleted blobs, snapshots, and versions.
 - Added `DeleteSnapshotsOption` support for deleting a blob together with its snapshots or deleting only its snapshots.

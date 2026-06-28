@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace AzureOss\Tests\Storage\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobServiceClient;
+use AzureOss\Storage\Blob\Exceptions\BlobStorageException;
 use AzureOss\Storage\Blob\Exceptions\InvalidConnectionStringException;
 use AzureOss\Storage\Blob\Exceptions\UnableToGenerateSasException;
 use AzureOss\Storage\Blob\Models\BlobContainer;
 use AzureOss\Storage\Blob\Models\BlobContainerInclude;
+use AzureOss\Storage\Blob\Models\BlobErrorCode;
 use AzureOss\Storage\Blob\Models\GetBlobContainersOptions;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
@@ -170,9 +172,24 @@ final class BlobServiceClientTest extends TestCase
         self::assertNotNull($deletedContainers[0]->properties->deletedOn);
         self::assertNotNull($deletedContainers[0]->properties->remainingRetentionDays);
 
-        $restored = $service->undeleteBlobContainer($containerName, $deletedContainers[0]->versionId);
+        $restored = null;
+        self::assertEventually(
+            callback: function () use ($service, $containerName, $deletedContainers, &$restored): bool {
+                try {
+                    $restored ??= $service->undeleteBlobContainer($containerName, $deletedContainers[0]->versionId);
 
-        self::assertTrue($restored->exists());
+                    return $restored->exists();
+                } catch (BlobStorageException $e) {
+                    if ($e->errorCode === BlobErrorCode::ContainerBeingDeleted) {
+                        return false;
+                    }
+
+                    throw $e;
+                }
+            },
+            maxAttempts: 20,
+            message: 'Soft-deleted container restoration timed out',
+        );
     }
 
     #[Test]

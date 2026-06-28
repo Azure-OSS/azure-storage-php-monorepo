@@ -165,12 +165,13 @@ class MockBlobClientTest extends TestCase
         iterator_to_array($container->getBlobsByHierarchy(options: new GetBlobsOptions(includes: [
             BlobInclude::COPY,
             BlobInclude::DELETED,
+            BlobInclude::DELETED_WITH_VERSIONS,
         ])));
 
         $requests = Server::received();
         parse_str($requests[0]->getUri()->getQuery(), $query);
 
-        self::assertSame('copy,deleted', $query['include'] ?? null);
+        self::assertSame('copy,deleted,deletedwithversions', $query['include'] ?? null);
     }
 
     #[Test]
