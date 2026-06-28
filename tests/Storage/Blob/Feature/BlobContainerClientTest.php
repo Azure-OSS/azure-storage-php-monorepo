@@ -339,9 +339,6 @@ final class BlobContainerClientTest extends TestCase
     #[Test]
     public function can_generate_sas_uri_works(): void
     {
-        self::markTestSkipped('This test is flaky and needs to be fixed');
-
-        /** @phpstan-ignore-next-line  */
         $container = new BlobContainerClient(new Uri('https://testing.blob.core.windows.net/testing'));
 
         self::assertFalse($container->canGenerateSasUri());
@@ -364,8 +361,7 @@ final class BlobContainerClientTest extends TestCase
                 ->setPermissions(new BlobContainerSasPermissions(list: true))
                 ->setVersion(ApiVersion::latestGA()->value)
                 ->setIPRange(new SasIpRange('0.0.0.0', '255.255.255.255'))
-                ->setStartsOn(new \DateTimeImmutable('-5 minutes'))
-                ->setExpiresOn(new \DateTimeImmutable('+5 minutes')),
+                ->setExpiresOn(new \DateTimeImmutable('+1 hour')),
         );
 
         $sasServiceClient = new BlobContainerClient($sas);
@@ -376,8 +372,6 @@ final class BlobContainerClientTest extends TestCase
             callback: function () use ($sasServiceClient, &$blobs): void {
                 $blobs = iterator_to_array($sasServiceClient->getBlobs());
             },
-            // One initial attempt plus 180 one-second retries.
-            maxAttempts: 181,
         );
         self::assertIsArray($blobs);
     }

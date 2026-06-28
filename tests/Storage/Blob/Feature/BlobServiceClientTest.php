@@ -232,17 +232,13 @@ final class BlobServiceClientTest extends TestCase
     #[Test]
     public function generate_account_sas_uri_works(): void
     {
-        self::markTestSkipped('This test is flaky and needs to be fixed');
-
-        /** @phpstan-ignore-next-line  */
         $sas = $this->service()->generateAccountSasUri(
             AccountSasBuilder::new()
                 ->setPermissions(new AccountSasPermissions(list: true))
                 ->setResourceTypes(new AccountSasResourceTypes(service: true))
                 ->setIpRange(new SasIpRange('0.0.0.0', '255.255.255.255'))
                 ->setVersion(ApiVersion::latestGA()->value)
-                ->setStartsOn(new \DateTimeImmutable('-5 minutes'))
-                ->setExpiresOn(new \DateTimeImmutable('+5 minutes')),
+                ->setExpiresOn(new \DateTimeImmutable('+1 hour')),
         );
 
         $sasServiceClient = new BlobServiceClient($sas);
@@ -252,8 +248,6 @@ final class BlobServiceClientTest extends TestCase
             callback: function () use ($sasServiceClient, &$containers): void {
                 $containers = iterator_to_array($sasServiceClient->getBlobContainers());
             },
-            // One initial attempt plus 180 one-second retries.
-            maxAttempts: 181,
         );
         self::assertIsArray($containers);
     }
