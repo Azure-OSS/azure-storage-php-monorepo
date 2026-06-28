@@ -868,9 +868,6 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function can_generate_sas_uri_works(): void
     {
-        self::markTestSkipped('This test is flaky and needs to be fixed');
-
-        /** @phpstan-ignore-next-line  */
         $containerClient = new BlobClient(new Uri('https://testing.blob.core.windows.net/testing/some-blob'));
 
         self::assertFalse($containerClient->canGenerateSasUri());
