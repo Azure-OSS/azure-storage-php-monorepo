@@ -9,6 +9,7 @@ use AzureOss\Storage\Blob\Exceptions\BlobStorageException;
 use AzureOss\Storage\Blob\Exceptions\BlobStorageExceptionDeserializer;
 use AzureOss\Storage\Blob\Exceptions\InvalidBlobUriException;
 use AzureOss\Storage\Blob\Exceptions\UnableToGenerateSasException;
+use AzureOss\Storage\Blob\Helpers\BlobUriBuilderHelper;
 use AzureOss\Storage\Blob\Helpers\BlobUriParserHelper;
 use AzureOss\Storage\Blob\Helpers\MetadataHelper;
 use AzureOss\Storage\Blob\Helpers\StreamHelper;
@@ -21,9 +22,11 @@ use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\BlobLeaseClientOptions;
 use AzureOss\Storage\Blob\Models\BlobProperties;
 use AzureOss\Storage\Blob\Models\BlobRequestConditions;
+use AzureOss\Storage\Blob\Models\BlobSnapshotInfo;
 use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
 use AzureOss\Storage\Blob\Models\CommitBlockListOptions;
 use AzureOss\Storage\Blob\Models\CopyStatus;
+use AzureOss\Storage\Blob\Models\CreateSnapshotOptions;
 use AzureOss\Storage\Blob\Models\DeleteBlobOptions;
 use AzureOss\Storage\Blob\Models\DownloadBlobOptions;
 use AzureOss\Storage\Blob\Models\GetBlobPropertiesOptions;
@@ -86,6 +89,55 @@ final class BlobClient
         $this->blobName = BlobUriParserHelper::getBlobName($uri);
         $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $options->httpClientOptions, $options->apiVersion);
         $this->blockBlobClient = new BlockBlobClient($uri, $credential, new BlockBlobClientOptions($options->httpClientOptions, $options->apiVersion));
+    }
+
+    /**
+     * Creates a client that targets the specified snapshot without making a service request.
+     *
+     * Pass null or an empty string to remove the snapshot selector.
+     */
+    public function withSnapshot(?string $snapshot): self
+    {
+        return new self(
+            BlobUriBuilderHelper::withSnapshot($this->uri, $snapshot),
+            $this->credential,
+            $this->options,
+        );
+    }
+
+    /**
+     * Creates a client that targets the specified blob version without making a service request.
+     *
+     * Pass null or an empty string to remove the version selector.
+     */
+    public function withVersion(?string $versionId): self
+    {
+        return new self(
+            BlobUriBuilderHelper::withVersion($this->uri, $versionId),
+            $this->credential,
+            $this->options,
+        );
+    }
+
+    /** Creates a read-only snapshot of the base blob. */
+    public function createSnapshot(CreateSnapshotOptions $options = new CreateSnapshotOptions): BlobSnapshotInfo
+    {
+        /** @phpstan-ignore-next-line */
+        return $this->createSnapshotAsync($options)->wait();
+    }
+
+    /** Asynchronously creates a read-only snapshot of the base blob. */
+    public function createSnapshotAsync(CreateSnapshotOptions $options = new CreateSnapshotOptions): PromiseInterface
+    {
+        return $this->client
+            ->putAsync($this->uri, [
+                RequestOptions::QUERY => ['comp' => 'snapshot'],
+                RequestOptions::HEADERS => [
+                    ...MetadataHelper::metadataToHeaders($options->metadata),
+                    ...($options->conditions?->toHeaders('BlobClient::createSnapshot', RequestConditionSet::ALL) ?? []),
+                ],
+            ])
+            ->then(BlobSnapshotInfo::fromResponse(...));
     }
 
     /** Downloads the blob as a streaming response. */

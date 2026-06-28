@@ -18,9 +18,11 @@ final class BlobCopyResultTest extends TestCase
         $result = BlobCopyResult::fromResponse(new Response(202, [
             'x-ms-copy-id' => 'copy-id',
             'x-ms-copy-status' => 'pending',
+            'x-ms-version-id' => 'version-id',
         ]));
 
         self::assertSame('copy-id', $result->copyId);
         self::assertSame(CopyStatus::PENDING, $result->copyStatus);
+        self::assertSame('version-id', $result->versionId);
     }
 }

@@ -11,6 +11,7 @@ use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\BlobInclude;
 use AzureOss\Storage\Blob\Models\BlobRequestConditions;
 use AzureOss\Storage\Blob\Models\CopyStatus;
+use AzureOss\Storage\Blob\Models\CreateSnapshotOptions;
 use AzureOss\Storage\Blob\Models\DownloadBlobOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
@@ -48,6 +49,52 @@ final class BlobClientTest extends TestCase
         self::assertEquals($result->properties->contentLength, strlen($content));
         self::assertEquals('text/plain', $result->properties->contentType);
         self::assertEquals($content, $result->content->getContents());
+    }
+
+    #[Test]
+    public function snapshot_can_be_created_read_and_deleted(): void
+    {
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('snapshot.txt');
+        $blob->upload('before snapshot');
+
+        $info = $blob->createSnapshot(new CreateSnapshotOptions(
+            metadata: ['purpose' => 'backup'],
+        ));
+        $snapshot = $blob->withSnapshot($info->snapshot);
+
+        $blob->upload('after snapshot');
+
+        self::assertSame('before snapshot', $snapshot->downloadStreaming()->content->getContents());
+        self::assertSame(['purpose' => 'backup'], $snapshot->getProperties()->metadata);
+        self::assertSame('after snapshot', $blob->downloadStreaming()->content->getContents());
+
+        $snapshot->delete();
+
+        self::assertFalse($snapshot->exists());
+        self::assertTrue($blob->exists());
+    }
+
+    #[Test]
+    public function previous_blob_version_can_be_read_and_deleted(): void
+    {
+        $container = $this->tempContainer(versions: true);
+        $blob = $container->getBlobClient('versioned.txt');
+        $blob->upload('first version');
+
+        $versionId = $blob->getProperties()->versionId;
+        self::assertNotNull($versionId);
+
+        $blob->upload('second version');
+        $version = $blob->withVersion($versionId);
+
+        self::assertSame('first version', $version->downloadStreaming()->content->getContents());
+        self::assertFalse($version->getProperties()->isLatestVersion);
+
+        $version->delete();
+
+        self::assertFalse($version->exists());
+        self::assertSame('second version', $blob->downloadStreaming()->content->getContents());
     }
 
     #[Test]

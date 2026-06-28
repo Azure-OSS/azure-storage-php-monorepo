@@ -53,6 +53,8 @@ Our other packages:
   - Copy blobs (synchronous and asynchronous)
   - List blobs (flat, by prefix, and hierarchical listing) with page sizing
   - Delete blobs
+  - Create, read, copy, and delete snapshots
+  - Select, read, restore, and delete blob versions
   - Read properties and manage metadata
   - Blob index tags: set/get tags and query blobs by tags (account or container scope)
 - SAS:

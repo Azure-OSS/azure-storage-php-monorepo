@@ -31,6 +31,8 @@ final class BlobPropertiesTest extends TestCase
             'x-ms-copy-status-description' => 'The copy completed.',
             'x-ms-copy-completion-time' => 'Sun, 27 Sep 2009 18:45:00 GMT',
             'x-ms-meta-owner' => 'storage-team',
+            'x-ms-version-id' => 'version-id',
+            'x-ms-is-current-version' => 'false',
         ]));
 
         self::assertNotNull($properties->lastModified);
@@ -48,6 +50,8 @@ final class BlobPropertiesTest extends TestCase
         self::assertSame('attachment; filename="readme.txt"', $properties->contentDisposition);
         self::assertSame('en-US', $properties->contentLanguage);
         self::assertSame('gzip', $properties->contentEncoding);
+        self::assertSame('version-id', $properties->versionId);
+        self::assertFalse($properties->isLatestVersion);
     }
 
     #[Test]
@@ -86,5 +90,7 @@ final class BlobPropertiesTest extends TestCase
         self::assertSame('attachment; filename="readme.txt"', $properties->contentDisposition);
         self::assertSame('en-US', $properties->contentLanguage);
         self::assertSame('gzip', $properties->contentEncoding);
+        self::assertNull($properties->versionId);
+        self::assertNull($properties->isLatestVersion);
     }
 }

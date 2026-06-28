@@ -11,6 +11,9 @@
 - Added deletion time and remaining retention days to listed blob properties.
 - Added deleted-container listing and restoration through `GetBlobContainersOptions`, `BlobContainerInclude`, and `BlobServiceClient::undeleteBlobContainer()`.
 - Added container deletion state, deleted version, deletion time, remaining retention days, and requested metadata to container list results.
+- Added blob snapshot creation through `BlobClient::createSnapshot()` and `createSnapshotAsync()`, configured with `CreateSnapshotOptions`.
+- Added `BlobClient::withSnapshot()`, `BlobClient::withVersion()`, and matching block blob methods for targeting immutable snapshots and versions.
+- Added version identifiers to blob properties and copy results, plus current-version state to blob properties.
 
 ## 2.1.0
 
