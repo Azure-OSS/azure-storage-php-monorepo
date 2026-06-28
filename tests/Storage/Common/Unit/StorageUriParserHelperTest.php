@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Common\Unit;
+namespace AzureOss\Tests\Storage\Common\Unit;
 
 use AzureOss\Storage\Common\Helpers\StorageUriParserHelper;
 use GuzzleHttp\Psr7\Uri;

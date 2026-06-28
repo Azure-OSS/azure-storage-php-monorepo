@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Common\Feature;
+namespace AzureOss\Tests\Storage\Common\Feature;
 
 use AzureOss\Identity\ClientSecretCredential;
 use AzureOss\Identity\TokenRequestContext;

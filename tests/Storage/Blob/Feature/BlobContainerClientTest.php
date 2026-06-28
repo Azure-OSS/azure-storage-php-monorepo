@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Blob\Feature;
+namespace AzureOss\Tests\Storage\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\BlobContainerClient;
@@ -20,8 +20,8 @@ use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Sas\SasIpRange;
-use AzureOss\Storage\Tests\CreatesTempContainers;
-use AzureOss\Storage\Tests\RetryableAssertions;
+use AzureOss\Tests\Storage\CreatesTempContainers;
+use AzureOss\Tests\Storage\RetryableAssertions;
 use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

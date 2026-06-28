@@ -126,6 +126,7 @@ final class ExtractChangelogSectionTest extends TestCase
             2 => ['pipe', 'w'],
         ];
 
+        /** @phpstan-ignore-next-line */
         $process = proc_open($command, $descriptorSpec, $pipes, getcwd());
 
         self::assertIsResource($process);

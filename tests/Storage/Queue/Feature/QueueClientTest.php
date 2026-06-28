@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Queue\Feature;
+namespace AzureOss\Tests\Storage\Queue\Feature;
 
 use AzureOss\Storage\Queue\Exceptions\QueueStorageException;
-use AzureOss\Storage\Tests\CreatesTempQueues;
-use AzureOss\Storage\Tests\RetryableAssertions;
+use AzureOss\Tests\Storage\CreatesTempQueues;
+use AzureOss\Tests\Storage\RetryableAssertions;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

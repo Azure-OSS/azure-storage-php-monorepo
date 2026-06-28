@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Blob\Feature;
+namespace AzureOss\Tests\Storage\Blob\Feature;
 
 use AzureOss\Storage\Blob\Exceptions\BlobStorageException;
 use AzureOss\Storage\Blob\Models\BlobErrorCode;
-use AzureOss\Storage\Tests\CreatesTempContainers;
+use AzureOss\Tests\Storage\CreatesTempContainers;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

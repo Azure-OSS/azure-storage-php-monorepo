@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Identity\Tests;
+namespace AzureOss\Tests\Identity;
 
 use AzureOss\Identity\ClientCertificateCredential;
 use AzureOss\Identity\ClientSecretCredential;

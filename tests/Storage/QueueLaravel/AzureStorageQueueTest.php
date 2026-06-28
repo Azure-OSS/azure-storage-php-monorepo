@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\QueueLaravel;
+namespace AzureOss\Tests\Storage\QueueLaravel;
 
 use AzureOss\Storage\QueueLaravel\AzureStorageQueue;
 use AzureOss\Storage\QueueLaravel\AzureStorageQueueServiceProvider;
-use AzureOss\Storage\Tests\CreatesTempQueues;
-use AzureOss\Storage\Tests\RetryableAssertions;
+use AzureOss\Tests\Storage\CreatesTempQueues;
+use AzureOss\Tests\Storage\RetryableAssertions;
 use Illuminate\Queue\QueueManager;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\BlobLaravel;
+namespace AzureOss\Tests\Storage\BlobLaravel;
 
 use AzureOss\Storage\BlobLaravel\AzureStorageBlobAdapter;
 use AzureOss\Storage\BlobLaravel\AzureStorageBlobServiceProvider;

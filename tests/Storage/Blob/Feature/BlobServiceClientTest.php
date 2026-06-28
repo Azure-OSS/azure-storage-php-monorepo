@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Blob\Feature;
+namespace AzureOss\Tests\Storage\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobServiceClient;
 use AzureOss\Storage\Blob\Exceptions\InvalidConnectionStringException;
@@ -13,8 +13,8 @@ use AzureOss\Storage\Common\Sas\AccountSasBuilder;
 use AzureOss\Storage\Common\Sas\AccountSasPermissions;
 use AzureOss\Storage\Common\Sas\AccountSasResourceTypes;
 use AzureOss\Storage\Common\Sas\SasIpRange;
-use AzureOss\Storage\Tests\CreatesTempContainers;
-use AzureOss\Storage\Tests\RetryableAssertions;
+use AzureOss\Tests\Storage\CreatesTempContainers;
+use AzureOss\Tests\Storage\RetryableAssertions;
 use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -6,14 +6,12 @@
   "license": "MIT",
   "autoload": {
     "psr-4": {
-      "AzureOss\\Identity\\": "src/Identity/",
-      "AzureOss\\Storage\\": "src/Storage/"
+      "AzureOss\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "AzureOss\\Identity\\Tests\\": "tests/Identity/",
-      "AzureOss\\Storage\\Tests\\": "tests/Storage/"
+      "AzureOss\\Tests\\": "tests/"
     }
   },
   "authors": [

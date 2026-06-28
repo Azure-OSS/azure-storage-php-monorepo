@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Blob\Feature;
+namespace AzureOss\Tests\Storage\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
@@ -25,7 +25,7 @@ use AzureOss\Storage\Blob\Models\UploadBlobOptions;
 use AzureOss\Storage\Blob\Specialized\BlockBlobClient;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Models\ETag;
-use AzureOss\Storage\Tests\CreatesTempFiles;
+use AzureOss\Tests\Storage\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Uri;

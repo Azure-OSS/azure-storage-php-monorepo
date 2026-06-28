@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\BlobLaravel;
+namespace AzureOss\Tests\Storage\BlobLaravel;
 
 use AzureOss\Storage\BlobLaravel\AzureStorageBlobAdapter;
 use AzureOss\Storage\BlobLaravel\AzureStorageBlobServiceProvider;
-use AzureOss\Storage\Tests\CreatesTempContainers;
+use AzureOss\Tests\Storage\CreatesTempContainers;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;

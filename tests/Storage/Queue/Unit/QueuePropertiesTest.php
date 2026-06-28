@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Queue\Unit;
+namespace AzureOss\Tests\Storage\Queue\Unit;
 
 use AzureOss\Storage\Queue\Models\QueueProperties;
 use GuzzleHttp\Psr7\Response;

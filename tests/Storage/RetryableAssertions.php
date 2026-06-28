@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests;
+namespace AzureOss\Tests\Storage;
 
 use PHPUnit\Framework\Assert;
 

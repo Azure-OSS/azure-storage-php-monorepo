@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Blob\Feature;
+namespace AzureOss\Tests\Storage\Blob\Feature;
 
 use AzureOss\Storage\Blob\BlobClient;
 use AzureOss\Storage\Blob\Exceptions\BlobStorageException;
@@ -15,8 +15,8 @@ use AzureOss\Storage\Blob\Models\UploadBlobOptions;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
 use AzureOss\Storage\Blob\Sas\BlobSasPermissions;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
-use AzureOss\Storage\Tests\CreatesTempContainers;
-use AzureOss\Storage\Tests\CreatesTempFiles;
+use AzureOss\Tests\Storage\CreatesTempContainers;
+use AzureOss\Tests\Storage\CreatesTempFiles;
 use GuzzleHttp\Psr7\NoSeekStream;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Uri;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Queue\Feature;
+namespace AzureOss\Tests\Storage\Queue\Feature;
 
 use AzureOss\Storage\Queue\QueueServiceClient;
 use PHPUnit\Framework\Attributes\Test;

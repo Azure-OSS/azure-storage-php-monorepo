@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Common\Unit;
+namespace AzureOss\Tests\Storage\Common\Unit;
 
 use AzureOss\Storage\Blob\Helpers\DeprecationHelper;
 use PHPUnit\Framework\Attributes\IgnoreDeprecations;
@@ -19,7 +19,7 @@ class DeprecationHelperTest extends TestCase
     {
         set_error_handler(
             function (int $errNo, string $errstr) {
-                self::assertEquals('The constructor of AzureOss\Storage\Tests\Common\Unit\ClassWithDeprecatedPublicConstructor will be private in version 2.0.', $errstr);
+                self::assertEquals('The constructor of AzureOss\Tests\Storage\Common\Unit\ClassWithDeprecatedPublicConstructor will be private in version 2.0.', $errstr);
 
                 return false;
             },
@@ -59,7 +59,7 @@ class DeprecationHelperTest extends TestCase
     {
         set_error_handler(
             function (int $errNo, string $errstr) {
-                self::assertEquals('The method AzureOss\Storage\Tests\Common\Unit\ClassWithDeprecatedPublicMethod::deprecatedMethod() will be removed in version 2.0.', $errstr);
+                self::assertEquals('The method AzureOss\Tests\Storage\Common\Unit\ClassWithDeprecatedPublicMethod::deprecatedMethod() will be removed in version 2.0.', $errstr);
 
                 return false;
             },

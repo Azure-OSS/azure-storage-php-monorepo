@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\QueueLaravel;
+namespace AzureOss\Tests\Storage\QueueLaravel;
 
 use AzureOss\Storage\QueueLaravel\AzureStorageQueue;
 use AzureOss\Storage\QueueLaravel\AzureStorageQueueServiceProvider;

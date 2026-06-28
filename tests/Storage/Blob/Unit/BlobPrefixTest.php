@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Blob\Unit;
+namespace AzureOss\Tests\Storage\Blob\Unit;
 
 use AzureOss\Storage\Blob\Models\BlobPrefix;
 use PHPUnit\Framework\Attributes\Test;

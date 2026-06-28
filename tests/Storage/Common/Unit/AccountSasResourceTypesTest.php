@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Common\Unit;
+namespace AzureOss\Tests\Storage\Common\Unit;
 
 use AzureOss\Storage\Common\Sas\AccountSasResourceTypes;
 use PHPUnit\Framework\Attributes\Test;

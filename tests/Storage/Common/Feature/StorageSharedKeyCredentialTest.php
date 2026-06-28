@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Storage\Tests\Common\Feature;
+namespace AzureOss\Tests\Storage\Common\Feature;
 
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Helpers\ConnectionStringHelper;
