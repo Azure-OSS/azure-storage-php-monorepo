@@ -41,6 +41,10 @@ final class BlobProperties
         public readonly ?\DateTimeInterface $deletedOn = null,
         /** Days remaining before the soft-deleted blob or snapshot is permanently removed. */
         public readonly ?int $remainingRetentionDays = null,
+        /** The version identifier returned for this blob when versioning is enabled. */
+        public readonly ?string $versionId = null,
+        /** Whether this version is the current version of the blob. */
+        public readonly ?bool $isLatestVersion = null,
     ) {}
 
     public static function fromResponseHeaders(ResponseInterface $response): self
@@ -63,6 +67,10 @@ final class BlobProperties
             $response->hasHeader('ETag') ? new ETag($response->getHeaderLine('ETag')) : null,
             $response->hasHeader('x-ms-deleted-time') ? DateHelper::deserializeDateRfc1123Date($response->getHeaderLine('x-ms-deleted-time')) : null,
             $response->hasHeader('x-ms-remaining-retention-days') ? (int) $response->getHeaderLine('x-ms-remaining-retention-days') : null,
+            $response->hasHeader('x-ms-version-id') ? $response->getHeaderLine('x-ms-version-id') : null,
+            $response->hasHeader('x-ms-is-current-version')
+                ? filter_var($response->getHeaderLine('x-ms-is-current-version'), FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE)
+                : null,
         );
     }
 

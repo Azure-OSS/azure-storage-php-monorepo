@@ -13,6 +13,7 @@ use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\BlobInclude;
 use AzureOss\Storage\Blob\Models\BlobRequestConditions;
 use AzureOss\Storage\Blob\Models\BlobServiceClientOptions;
+use AzureOss\Storage\Blob\Models\CreateSnapshotOptions;
 use AzureOss\Storage\Blob\Models\DeleteBlobOptions;
 use AzureOss\Storage\Blob\Models\DeleteContainerOptions;
 use AzureOss\Storage\Blob\Models\DeleteSnapshotsOption;
@@ -26,8 +27,11 @@ use AzureOss\Storage\Blob\Models\StageBlockOptions;
 use AzureOss\Storage\Blob\Models\StartCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\SyncCopyFromUriOptions;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
+use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
+use AzureOss\Storage\Blob\Sas\BlobSasPermissions;
 use AzureOss\Storage\Blob\Specialized\BlockBlobClient;
 use AzureOss\Storage\Common\ApiVersion;
+use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\Common\Models\ETag;
 use AzureOss\Tests\Storage\CreatesTempFiles;
 use GuzzleHttp\Psr7\Response;
@@ -37,6 +41,7 @@ use GuzzleHttp\Server\Server;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 
 class MockBlobClientTest extends TestCase
 {
@@ -191,6 +196,124 @@ class MockBlobClientTest extends TestCase
     }
 
     #[Test]
+    public function blob_clients_can_target_snapshots_and_versions_without_losing_sas_parameters(): void
+    {
+        $blob = new BlobClient(new Uri(
+            'https://account.blob.core.windows.net/container/blob?sv=2024-08-04&sig=signature',
+        ));
+
+        $snapshot = $blob->withSnapshot('2026-06-28T10:20:30.1234567Z');
+        parse_str($snapshot->uri->getQuery(), $snapshotQuery);
+
+        self::assertSame('2026-06-28T10:20:30.1234567Z', $snapshotQuery['snapshot'] ?? null);
+        self::assertSame('signature', $snapshotQuery['sig'] ?? null);
+        self::assertArrayNotHasKey('snapshot', $this->query($blob->uri));
+
+        $version = $snapshot->withVersion('2026-06-28T11:20:30.1234567Z');
+        $versionQuery = $this->query($version->uri);
+
+        self::assertSame('2026-06-28T11:20:30.1234567Z', $versionQuery['versionid'] ?? null);
+        self::assertArrayNotHasKey('snapshot', $versionQuery);
+
+        $base = $version->withVersion(null);
+        self::assertArrayNotHasKey('versionid', $this->query($base->uri));
+        self::assertSame('signature', $this->query($base->uri)['sig'] ?? null);
+    }
+
+    #[Test]
+    public function selected_blob_clients_generate_resource_specific_sas_uris(): void
+    {
+        $blob = new BlobClient(
+            new Uri('https://account.blob.core.windows.net/container/blob?custom=value'),
+            new StorageSharedKeyCredential('account', base64_encode(str_repeat('x', 32))),
+        );
+        $expiresOn = new \DateTimeImmutable('2030-01-01T00:00:00Z');
+
+        $snapshotUri = $blob
+            ->withSnapshot('2026-06-28T10:20:30.1234567Z')
+            ->generateSasUri(BlobSasBuilder::new()
+                ->setPermissions(new BlobSasPermissions(read: true))
+                ->setExpiresOn($expiresOn));
+        $snapshotQuery = $this->query($snapshotUri);
+
+        self::assertSame(1, substr_count((string) $snapshotUri, '?'));
+        self::assertSame('2026-06-28T10:20:30.1234567Z', $snapshotQuery['snapshot'] ?? null);
+        self::assertSame('bs', $snapshotQuery['sr'] ?? null);
+        self::assertSame('value', $snapshotQuery['custom'] ?? null);
+        self::assertArrayNotHasKey('sst', $snapshotQuery);
+
+        $versionUri = $blob
+            ->withVersion('2026-06-28T11:20:30.1234567Z')
+            ->generateSasUri(BlobSasBuilder::new()
+                ->setPermissions(new BlobSasPermissions(read: true))
+                ->setExpiresOn($expiresOn));
+        $versionQuery = $this->query($versionUri);
+
+        self::assertSame(1, substr_count((string) $versionUri, '?'));
+        self::assertSame('2026-06-28T11:20:30.1234567Z', $versionQuery['versionid'] ?? null);
+        self::assertSame('bv', $versionQuery['sr'] ?? null);
+        self::assertSame('value', $versionQuery['custom'] ?? null);
+    }
+
+    #[Test]
+    public function block_blob_clients_can_target_snapshots_and_versions(): void
+    {
+        $blockBlob = new BlockBlobClient(new Uri('https://account.blob.core.windows.net/container/blob'));
+
+        self::assertSame('snapshot-id', $this->query($blockBlob->withSnapshot('snapshot-id')->uri)['snapshot'] ?? null);
+        self::assertSame('version-id', $this->query($blockBlob->withVersion('version-id')->uri)['versionid'] ?? null);
+    }
+
+    #[Test]
+    public function selected_blob_request_combines_the_selector_with_operation_query_parameters(): void
+    {
+        Server::enqueue([
+            new Response(200, body: '<Tags><TagSet/></Tags>'),
+            new Response(501),
+        ]);
+
+        $this->blob->withVersion('version-id')->getTags();
+
+        $requests = Server::received();
+        $query = $this->query($requests[0]->getUri());
+
+        self::assertCount(1, $requests);
+        self::assertSame('tags', $query['comp'] ?? null);
+        self::assertSame('version-id', $query['versionid'] ?? null);
+    }
+
+    #[Test]
+    public function create_snapshot_sends_options_and_deserializes_the_response(): void
+    {
+        Server::enqueue([
+            new Response(201, [
+                'x-ms-snapshot' => '2026-06-28T10:20:30.1234567Z',
+                'ETag' => '"snapshot-etag"',
+                'Last-Modified' => 'Sun, 28 Jun 2026 10:20:30 GMT',
+                'x-ms-version-id' => 'version-id',
+                'x-ms-request-server-encrypted' => 'true',
+            ]),
+            new Response(501),
+        ]);
+
+        $info = $this->blob->createSnapshot(new CreateSnapshotOptions(
+            metadata: ['purpose' => 'backup'],
+            conditions: new BlobRequestConditions(ifMatch: new ETag('"etag"')),
+        ));
+
+        $requests = Server::received();
+        $query = $this->query($requests[0]->getUri());
+
+        self::assertCount(1, $requests);
+        self::assertSame('PUT', $requests[0]->getMethod());
+        self::assertSame('snapshot', $query['comp'] ?? null);
+        self::assertSame('backup', $requests[0]->getHeaderLine('x-ms-meta-purpose'));
+        self::assertSame('"etag"', $requests[0]->getHeaderLine('If-Match'));
+        self::assertSame('2026-06-28T10:20:30.1234567Z', $info->snapshot);
+        self::assertSame('version-id', $info->versionId);
+    }
+
+    #[Test]
     public function undelete_blob_sends_correct_request(): void
     {
         Server::enqueue([new Response(200), new Response(501)]);
@@ -203,6 +326,17 @@ class MockBlobClientTest extends TestCase
         self::assertCount(1, $requests);
         self::assertSame('PUT', $requests[0]->getMethod());
         self::assertSame('undelete', $query['comp'] ?? null);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function query(UriInterface $uri): array
+    {
+        parse_str($uri->getQuery(), $query);
+
+        /** @var array<string, string> $query */
+        return $query;
     }
 
     #[Test]

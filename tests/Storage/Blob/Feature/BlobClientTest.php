@@ -11,6 +11,7 @@ use AzureOss\Storage\Blob\Models\BlobHttpHeaders;
 use AzureOss\Storage\Blob\Models\BlobInclude;
 use AzureOss\Storage\Blob\Models\BlobRequestConditions;
 use AzureOss\Storage\Blob\Models\CopyStatus;
+use AzureOss\Storage\Blob\Models\CreateSnapshotOptions;
 use AzureOss\Storage\Blob\Models\DownloadBlobOptions;
 use AzureOss\Storage\Blob\Models\GetBlobsOptions;
 use AzureOss\Storage\Blob\Models\UploadBlobOptions;
@@ -19,6 +20,7 @@ use AzureOss\Storage\Blob\Sas\BlobSasPermissions;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Tests\Storage\CreatesTempContainers;
 use AzureOss\Tests\Storage\CreatesTempFiles;
+use AzureOss\Tests\Storage\RetryableAssertions;
 use GuzzleHttp\Psr7\NoSeekStream;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use GuzzleHttp\Psr7\Uri;
@@ -30,7 +32,7 @@ use Psr\Http\Message\StreamInterface;
 
 final class BlobClientTest extends TestCase
 {
-    use CreatesTempContainers, CreatesTempFiles;
+    use CreatesTempContainers, CreatesTempFiles, RetryableAssertions;
 
     #[Test]
     public function download_stream_works(): void
@@ -48,6 +50,72 @@ final class BlobClientTest extends TestCase
         self::assertEquals($result->properties->contentLength, strlen($content));
         self::assertEquals('text/plain', $result->properties->contentType);
         self::assertEquals($content, $result->content->getContents());
+    }
+
+    #[Test]
+    public function snapshot_can_be_created_read_and_deleted(): void
+    {
+        $container = $this->tempContainer();
+        $blob = $container->getBlobClient('snapshot.txt');
+        $blob->upload('before snapshot');
+
+        $info = $blob->createSnapshot(new CreateSnapshotOptions(
+            metadata: ['purpose' => 'backup'],
+        ));
+        $snapshot = $blob->withSnapshot($info->snapshot);
+
+        $blob->upload('after snapshot');
+
+        self::assertSame('before snapshot', $snapshot->downloadStreaming()->content->getContents());
+        self::assertSame(['purpose' => 'backup'], $snapshot->getProperties()->metadata);
+        self::assertSame('after snapshot', $blob->downloadStreaming()->content->getContents());
+
+        $snapshotSas = $snapshot->generateSasUri(
+            BlobSasBuilder::new()
+                ->setPermissions(new BlobSasPermissions(read: true))
+                ->setExpiresOn((new \DateTimeImmutable)->modify('+5 minutes')),
+        );
+        self::assertSame(
+            'before snapshot',
+            (new BlobClient($snapshotSas))->downloadStreaming()->content->getContents(),
+        );
+
+        $snapshot->delete();
+
+        self::assertFalse($snapshot->exists());
+        self::assertTrue($blob->exists());
+    }
+
+    #[Test]
+    public function previous_blob_version_can_be_read_and_deleted(): void
+    {
+        $container = $this->tempContainer(versions: true);
+        $blob = $container->getBlobClient('versioned.txt');
+        $blob->upload('first version');
+
+        $versionId = $blob->getProperties()->versionId;
+        self::assertNotNull($versionId);
+
+        $blob->upload('second version');
+        $version = $blob->withVersion($versionId);
+
+        self::assertSame('first version', $version->downloadStreaming()->content->getContents());
+        self::assertNotTrue($version->getProperties()->isLatestVersion);
+
+        $versionSas = $version->generateSasUri(
+            BlobSasBuilder::new()
+                ->setPermissions(new BlobSasPermissions(read: true))
+                ->setExpiresOn((new \DateTimeImmutable)->modify('+5 minutes')),
+        );
+        self::assertSame(
+            'first version',
+            (new BlobClient($versionSas))->downloadStreaming()->content->getContents(),
+        );
+
+        $version->delete();
+
+        self::assertFalse($version->exists());
+        self::assertSame('second version', $blob->downloadStreaming()->content->getContents());
     }
 
     #[Test]
@@ -581,7 +649,7 @@ final class BlobClientTest extends TestCase
         $sourceSas = $sourceBlobClient->generateSasUri(
             BlobSasBuilder::new()
                 ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+                ->setExpiresOn((new \DateTimeImmutable)->modify('+5 minutes')),
         );
 
         $targetBlobClient = $targetContainer->getBlobClient('copied');
@@ -650,7 +718,7 @@ final class BlobClientTest extends TestCase
         $sourceSas = $sourceBlobClient->generateSasUri(
             BlobSasBuilder::new()
                 ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+                ->setExpiresOn((new \DateTimeImmutable)->modify('+5 minutes')),
         );
 
         $targetContainer = $this->tempContainer();
@@ -815,8 +883,6 @@ final class BlobClientTest extends TestCase
     #[Test]
     public function generate_sas_uri_works(): void
     {
-        $this->expectNotToPerformAssertions();
-
         $container = $this->tempContainer();
         $blobClient = $container->getBlobClient('blob');
         $blobClient->upload('test');
@@ -824,12 +890,18 @@ final class BlobClientTest extends TestCase
         $sas = $blobClient->generateSasUri(
             BlobSasBuilder::new()
                 ->setPermissions(new BlobSasPermissions(read: true))
-                ->setExpiresOn((new \DateTime)->modify('+ 1min')),
+                ->setExpiresOn(new \DateTimeImmutable('+1 hour')),
         );
 
         $sasBlobClient = new BlobClient($sas);
 
-        $sasBlobClient->downloadStreaming();
+        // Azure can transiently reject signed requests while the SAS becomes available.
+        self::assertEventuallySucceeds(
+            callback: function () use ($sasBlobClient): void {
+                self::assertSame('test', $sasBlobClient->downloadStreaming()->content->getContents());
+            },
+            maxAttempts: 30,
+        );
     }
 
     #[Test]

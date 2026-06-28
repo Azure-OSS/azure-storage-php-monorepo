@@ -7,6 +7,7 @@ namespace AzureOss\Storage\Blob\Specialized;
 use AzureOss\Identity\TokenCredential;
 use AzureOss\Storage\Blob\Exceptions\BlobStorageExceptionDeserializer;
 use AzureOss\Storage\Blob\Exceptions\InvalidBlobUriException;
+use AzureOss\Storage\Blob\Helpers\BlobUriBuilderHelper;
 use AzureOss\Storage\Blob\Helpers\BlobUriParserHelper;
 use AzureOss\Storage\Blob\Helpers\HashHelper;
 use AzureOss\Storage\Blob\Models\BlockBlobClientOptions;
@@ -40,11 +41,31 @@ final class BlockBlobClient
     public function __construct(
         public readonly UriInterface $uri,
         public readonly StorageSharedKeyCredential|TokenCredential|null $credential = null,
-        BlockBlobClientOptions $options = new BlockBlobClientOptions,
+        private readonly BlockBlobClientOptions $options = new BlockBlobClientOptions,
     ) {
         $this->containerName = BlobUriParserHelper::getContainerName($uri);
         $this->blobName = BlobUriParserHelper::getBlobName($uri);
         $this->client = (new ClientFactory)->create($uri, $credential, new BlobStorageExceptionDeserializer, $options->httpClientOptions, $options->apiVersion);
+    }
+
+    /** Creates a block blob client that targets the specified snapshot without making a service request. */
+    public function withSnapshot(?string $snapshot): self
+    {
+        return new self(
+            BlobUriBuilderHelper::withSnapshot($this->uri, $snapshot),
+            $this->credential,
+            $this->options,
+        );
+    }
+
+    /** Creates a block blob client that targets the specified blob version without making a service request. */
+    public function withVersion(?string $versionId): self
+    {
+        return new self(
+            BlobUriBuilderHelper::withVersion($this->uri, $versionId),
+            $this->credential,
+            $this->options,
+        );
     }
 
     /** Stages a block for later inclusion in the blob's committed block list. */

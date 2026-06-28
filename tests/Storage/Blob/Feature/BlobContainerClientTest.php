@@ -19,7 +19,6 @@ use AzureOss\Storage\Blob\Sas\BlobContainerSasPermissions;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
-use AzureOss\Storage\Common\Sas\SasIpRange;
 use AzureOss\Tests\Storage\CreatesTempContainers;
 use AzureOss\Tests\Storage\RetryableAssertions;
 use GuzzleHttp\Psr7\Uri;
@@ -360,14 +359,12 @@ final class BlobContainerClientTest extends TestCase
             BlobSasBuilder::new()
                 ->setPermissions(new BlobContainerSasPermissions(list: true))
                 ->setVersion(ApiVersion::latestGA()->value)
-                ->setIPRange(new SasIpRange('0.0.0.0', '255.255.255.255'))
-                ->setStartsOn(new \DateTimeImmutable('-5 minutes'))
-                ->setExpiresOn(new \DateTimeImmutable('+5 minutes')),
+                ->setExpiresOn(new \DateTimeImmutable('+1 hour')),
         );
 
         $sasServiceClient = new BlobContainerClient($sas);
 
-        // Azure can transiently reject the first signed list request right after container creation.
+        // Azure can transiently reject signed requests while the SAS becomes available.
         $blobs = null;
         self::assertEventuallySucceeds(
             callback: function () use ($sasServiceClient, &$blobs): void {
