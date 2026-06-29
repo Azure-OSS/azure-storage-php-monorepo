@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace AzureOss\Tests\Storage\File\Share\Feature;
 
-use FilesystemIterator;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
 
 final class MountedFileShareTest extends TestCase
 {
@@ -37,31 +34,9 @@ final class MountedFileShareTest extends TestCase
             self::assertFileExists($filePath);
             self::assertSame($contents, file_get_contents($filePath));
         } finally {
-            $this->removeDirectory($root);
+            @unlink($filePath);
+            @rmdir($directory);
+            @rmdir($root);
         }
-    }
-
-    private function removeDirectory(string $path): void
-    {
-        if (! is_dir($path)) {
-            return;
-        }
-
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST,
-        );
-
-        foreach ($iterator as $item) {
-            if ($item->isDir()) {
-                @rmdir($item->getPathname());
-
-                continue;
-            }
-
-            @unlink($item->getPathname());
-        }
-
-        @rmdir($path);
     }
 }
