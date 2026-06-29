@@ -17,6 +17,7 @@ use AzureOss\Storage\Blob\Models\GetBlobsOptions;
 use AzureOss\Storage\Blob\Models\PublicAccessType;
 use AzureOss\Storage\Blob\Sas\BlobContainerSasPermissions;
 use AzureOss\Storage\Blob\Sas\BlobSasBuilder;
+use AzureOss\Storage\Blob\Sas\BlobSasPermissions;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Tests\Storage\CreatesTempContainers;
@@ -372,6 +373,26 @@ final class BlobContainerClientTest extends TestCase
         self::assertSame(ApiVersion::latestGA()->value, $query['sv'] ?? null);
         self::assertSame('value', $query['custom'] ?? null);
         self::assertArrayHasKey('sig', $query);
+    }
+
+    #[Test]
+    public function generate_sas_uri_clears_blob_specific_state_from_a_reused_builder(): void
+    {
+        $credential = new StorageSharedKeyCredential('account', base64_encode(str_repeat('x', 32)));
+        $builder = BlobSasBuilder::new()
+            ->setPermissions(new BlobSasPermissions(read: true))
+            ->setExpiresOn(new \DateTimeImmutable('2030-01-01T00:00:00Z'));
+
+        (new BlobClient(new Uri('https://account.blob.core.windows.net/container/blob?snapshot=2026-06-28T10%3A20%3A30.1234567Z'), $credential))
+            ->generateSasUri($builder);
+
+        $sas = (new BlobContainerClient(new Uri('https://account.blob.core.windows.net/container'), $credential))
+            ->generateSasUri($builder->setPermissions(new BlobContainerSasPermissions(list: true)));
+
+        parse_str($sas->getQuery(), $query);
+
+        self::assertSame('c', $query['sr'] ?? null);
+        self::assertSame('l', $query['sp'] ?? null);
     }
 
     #[Test]

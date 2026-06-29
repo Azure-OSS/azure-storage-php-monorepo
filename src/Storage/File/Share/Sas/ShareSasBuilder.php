@@ -65,9 +65,9 @@ final class ShareSasBuilder
      * resources. Directory clients therefore stamp their path here using the same file-path
      * semantics that the Azure .NET SDK uses.
      */
-    public function setFilePath(string $value): self
+    public function setFilePath(?string $value): self
     {
-        $this->filePath = self::normalizePath($value);
+        $this->filePath = $value !== null ? self::normalizePath($value) : null;
 
         return $this;
     }
@@ -171,9 +171,7 @@ final class ShareSasBuilder
     /** Signs and returns the service SAS query string without a leading question mark. */
     public function build(StorageSharedKeyCredential $sharedKeyCredential): string
     {
-        if ($this->identifier === null && $this->permissions === null) {
-            throw new UnableToGenerateSasException;
-        }
+        $this->validateState();
 
         $signedStart = $this->startsOn !== null ? self::formatAs8601Zulu($this->startsOn) : null;
         $signedExpiry = self::formatAs8601Zulu($this->expiresOn);
@@ -219,6 +217,34 @@ final class ShareSasBuilder
             'rscl' => $this->contentLanguage,
             'rsct' => $this->contentType,
         ], static fn (?string $value): bool => $value !== null), false);
+    }
+
+    /**
+     * Ensures the builder contains the minimum state required to sign a SAS.
+     *
+     * @throws UnableToGenerateSasException
+     */
+    private function validateState(): void
+    {
+        if (! isset($this->shareName) || $this->shareName === '') {
+            throw new UnableToGenerateSasException('A share name is required to generate a SAS.');
+        }
+
+        if ($this->identifier !== null) {
+            return;
+        }
+
+        if (! isset($this->expiresOn)) {
+            throw new UnableToGenerateSasException(
+                'An expiration time is required to generate a SAS without a stored access policy identifier.',
+            );
+        }
+
+        if ($this->permissions === null) {
+            throw new UnableToGenerateSasException(
+                'Permissions are required to generate a SAS without a stored access policy identifier.',
+            );
+        }
     }
 
     private function getCanonicalizedResource(string $accountName): string

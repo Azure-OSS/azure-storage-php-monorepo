@@ -82,11 +82,13 @@ final readonly class ShareDirectoryClient
             throw new UnableToGenerateSasException;
         }
 
+        $builder = clone $shareSasBuilder;
+
         if (StorageUriParserHelper::isDevelopmentUri($this->uri)) {
-            $shareSasBuilder->setProtocol(SasProtocol::HTTPS_AND_HTTP);
+            $builder->setProtocol(SasProtocol::HTTPS_AND_HTTP);
         }
 
-        $sas = $shareSasBuilder
+        $sas = $builder
             ->setShareName($this->shareName)
             ->setFilePath($this->directoryPath)
             ->build($this->credential);

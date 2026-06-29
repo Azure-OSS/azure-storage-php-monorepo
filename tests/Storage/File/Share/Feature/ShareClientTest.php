@@ -6,9 +6,11 @@ namespace AzureOss\Tests\Storage\File\Share\Feature;
 
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
 use AzureOss\Storage\File\Share\Exceptions\UnableToGenerateSasException;
+use AzureOss\Storage\File\Share\Sas\ShareFileSasPermissions;
 use AzureOss\Storage\File\Share\Sas\ShareSasBuilder;
 use AzureOss\Storage\File\Share\Sas\ShareSasPermissions;
 use AzureOss\Storage\File\Share\ShareClient;
+use AzureOss\Storage\File\Share\ShareFileClient;
 use GuzzleHttp\Psr7\Query;
 use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\Attributes\Test;
@@ -63,6 +65,25 @@ final class ShareClientTest extends TestCase
         self::assertSame('s', $query['sr'] ?? null);
         self::assertSame('l', $query['sp'] ?? null);
         self::assertSame('value', $query['custom'] ?? null);
+    }
+
+    #[Test]
+    public function generate_sas_uri_clears_any_file_path_state_from_a_reused_builder(): void
+    {
+        $credential = new StorageSharedKeyCredential('account', base64_encode(str_repeat('x', 32)));
+        $builder = ShareSasBuilder::new()
+            ->setPermissions(new ShareFileSasPermissions(read: true))
+            ->setExpiresOn(new \DateTimeImmutable('2030-01-01T00:00:00Z'));
+
+        (new ShareFileClient(new Uri('https://account.file.core.windows.net/share/path/file.txt'), $credential))
+            ->generateSasUri($builder);
+
+        $sas = (new ShareClient(new Uri('https://account.file.core.windows.net/share'), $credential))
+            ->generateSasUri($builder->setPermissions(new ShareSasPermissions(list: true)));
+        $query = $this->query($sas);
+
+        self::assertSame('s', $query['sr'] ?? null);
+        self::assertSame('l', $query['sp'] ?? null);
     }
 
     #[Test]

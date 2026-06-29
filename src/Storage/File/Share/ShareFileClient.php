@@ -28,7 +28,7 @@ final readonly class ShareFileClient
      * @param  StorageSharedKeyCredential|TokenCredential|null  $credential  Credential used to authorize requests, or null for anonymous/SAS access.
      */
     public function __construct(
-        public UriInterface                                    $uri,
+        public UriInterface $uri,
         public StorageSharedKeyCredential|TokenCredential|null $credential = null,
     ) {
         $this->shareName = ShareUriParserHelper::getShareName($uri);
@@ -52,11 +52,13 @@ final readonly class ShareFileClient
             throw new UnableToGenerateSasException;
         }
 
+        $builder = clone $shareSasBuilder;
+
         if (StorageUriParserHelper::isDevelopmentUri($this->uri)) {
-            $shareSasBuilder->setProtocol(SasProtocol::HTTPS_AND_HTTP);
+            $builder->setProtocol(SasProtocol::HTTPS_AND_HTTP);
         }
 
-        $sas = $shareSasBuilder
+        $sas = $builder
             ->setShareName($this->shareName)
             ->setFilePath($this->filePath)
             ->build($this->credential);

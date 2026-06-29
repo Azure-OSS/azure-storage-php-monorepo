@@ -129,6 +129,32 @@ final class ShareSasBuilderTest extends TestCase
             ->build($this->credential);
     }
 
+    #[Test]
+    public function it_requires_a_share_name(): void
+    {
+        $this->expectException(UnableToGenerateSasException::class);
+        $this->expectExceptionMessage('A share name is required to generate a SAS.');
+
+        ShareSasBuilder::new()
+            ->setPermissions(new ShareSasPermissions(read: true))
+            ->setExpiresOn(new \DateTimeImmutable('2030-01-01T00:00:00Z'))
+            ->build($this->credential);
+    }
+
+    #[Test]
+    public function it_requires_an_expiration_time_without_a_stored_access_policy(): void
+    {
+        $this->expectException(UnableToGenerateSasException::class);
+        $this->expectExceptionMessage(
+            'An expiration time is required to generate a SAS without a stored access policy identifier.',
+        );
+
+        ShareSasBuilder::new()
+            ->setShareName('share')
+            ->setPermissions(new ShareSasPermissions(read: true))
+            ->build($this->credential);
+    }
+
     /**
      * @return array<string, string>
      */
