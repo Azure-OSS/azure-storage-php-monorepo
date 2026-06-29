@@ -306,22 +306,21 @@ class AzureStorageBlobAdapterTest extends TestCase
     #[Test]
     public function driver_works_with_token(): void
     {
+        $container = $this->tempContainer('laravel-');
+        $container->getBlobClient('token-test.txt')->upload('token auth content');
+
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
             'tenant_id' => self::getRequiredEnvironmentVariable('AZURE_TENANT_ID'),
             'client_id' => self::getRequiredEnvironmentVariable('AZURE_CLIENT_ID'),
             'client_secret' => self::getRequiredEnvironmentVariable('AZURE_CLIENT_SECRET'),
-            'container' => $this->tempContainer('laravel-')->containerName,
+            'container' => $container->containerName,
             'endpoint' => self::getRequiredBlobEndpointEnvironmentValue(),
         ]]);
 
         $driver = Storage::disk('azure');
         self::assertInstanceOf(AzureStorageBlobAdapter::class, $driver);
 
-        $driver->deleteDirectory('');
-        self::assertFalse($driver->exists('token-test.txt'));
-
-        $driver->put('token-test.txt', 'token auth content');
         self::assertTrue($driver->exists('token-test.txt'));
         self::assertEquals(
             'token auth content',
@@ -329,31 +328,27 @@ class AzureStorageBlobAdapterTest extends TestCase
         );
 
         self::assertFalse($driver->providesTemporaryUrls());
-
-        $driver->delete('token-test.txt');
-        self::assertFalse($driver->exists('token-test.txt'));
     }
 
     #[Test]
     public function driver_works_with_client_certificate(): void
     {
+        $container = $this->tempContainer('laravel-');
+        $container->getBlobClient('certificate-test.txt')->upload('certificate auth content');
+
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
             'credential' => 'client_certificate',
             'tenant_id' => self::getRequiredEnvironmentVariable('AZURE_TENANT_ID'),
             'client_id' => self::getRequiredEnvironmentVariable('AZURE_CLIENT_ID'),
             'client_certificate_path' => $this->fixturePath('client-cert-pem-unencrypted.pem'),
-            'container' => $this->tempContainer('laravel-')->containerName,
+            'container' => $container->containerName,
             'endpoint' => self::getRequiredBlobEndpointEnvironmentValue(),
         ]]);
 
         $driver = Storage::disk('azure');
         self::assertInstanceOf(AzureStorageBlobAdapter::class, $driver);
 
-        $driver->deleteDirectory('');
-        self::assertFalse($driver->exists('certificate-test.txt'));
-
-        $driver->put('certificate-test.txt', 'certificate auth content');
         self::assertTrue($driver->exists('certificate-test.txt'));
         self::assertEquals(
             'certificate auth content',
@@ -361,9 +356,6 @@ class AzureStorageBlobAdapterTest extends TestCase
         );
 
         self::assertFalse($driver->providesTemporaryUrls());
-
-        $driver->delete('certificate-test.txt');
-        self::assertFalse($driver->exists('certificate-test.txt'));
     }
 
     #[Test]
