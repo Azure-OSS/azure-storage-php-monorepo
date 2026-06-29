@@ -307,9 +307,9 @@ class AzureStorageBlobAdapterTest extends TestCase
     {
         config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
-            'tenant_id' => self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_TENANT_ID'),
-            'client_id' => self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_CLIENT_ID'),
-            'client_secret' => self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_CLIENT_SECRET'),
+            'tenant_id' => self::getRequiredEnvironmentVariable('AZURE_TENANT_ID'),
+            'client_id' => self::getRequiredEnvironmentVariable('AZURE_CLIENT_ID'),
+            'client_secret' => self::getRequiredEnvironmentVariable('AZURE_CLIENT_SECRET'),
             'container' => $this->tempContainer('laravel-')->containerName,
             'account_name' => self::getRequiredBlobAccountNameEnvironmentValue(),
         ]]);

@@ -35,7 +35,7 @@ jobs:
         uses: actions/setup-node@v5
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_INFRA_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_INFRA_TENANT_ID }}
