@@ -48,4 +48,4 @@ jobs:
         run: composer install --no-interaction --no-progress --optimize-autoloader
 
       - name: Run tests
-        run: ./vendor/bin/paratest --processes=4 --display-skipped --display-warnings
+        run: ./vendor/bin/pest tests --parallel --display-skipped --display-warnings

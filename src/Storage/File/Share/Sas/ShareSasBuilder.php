@@ -6,6 +6,7 @@ namespace AzureOss\Storage\File\Share\Sas;
 
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
+use AzureOss\Storage\Common\Helpers\DateHelper;
 use AzureOss\Storage\Common\Sas\SasIpRange;
 use AzureOss\Storage\Common\Sas\SasProtocol;
 use AzureOss\Storage\File\Share\Exceptions\UnableToGenerateSasException;
@@ -173,8 +174,8 @@ final class ShareSasBuilder
     {
         $this->validateState();
 
-        $signedStart = $this->startsOn !== null ? self::formatAs8601Zulu($this->startsOn) : null;
-        $signedExpiry = self::formatAs8601Zulu($this->expiresOn);
+        $signedStart = $this->startsOn !== null ? DateHelper::formatAs8601Zulu($this->startsOn) : null;
+        $signedExpiry = DateHelper::formatAs8601Zulu($this->expiresOn);
         $signedIp = $this->ipRange !== null ? (string) $this->ipRange : null;
         $signedProtocol = $this->protocol?->value;
         $signedVersion = $this->version ?? ApiVersion::latestGA()->value;
@@ -263,12 +264,5 @@ final class ShareSasBuilder
         $path = trim(str_replace('\\', '/', $value), '/');
 
         return $path !== '' ? $path : null;
-    }
-
-    private static function formatAs8601Zulu(\DateTimeInterface $date): string
-    {
-        return \DateTime::createFromInterface($date)
-            ->setTimezone(new \DateTimeZone('UTC'))
-            ->format('Y-m-d\TH:i:s\Z');
     }
 }

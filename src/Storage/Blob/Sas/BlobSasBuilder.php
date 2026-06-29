@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace AzureOss\Storage\Blob\Sas;
 
 use AzureOss\Storage\Blob\Exceptions\UnableToGenerateSasException;
-use AzureOss\Storage\Blob\Helpers\DateHelper;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
+use AzureOss\Storage\Common\Helpers\DateHelper;
 use AzureOss\Storage\Common\Sas\SasIpRange;
 use AzureOss\Storage\Common\Sas\SasProtocol;
 use GuzzleHttp\Psr7\Query;

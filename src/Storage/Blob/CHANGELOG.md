@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Blob SAS generation now uses the shared storage-common date helper for SAS timestamp formatting.
+
 ## 2.2.1
 
 ### Changed

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace AzureOss\Storage\Common\Sas;
 
-use AzureOss\Storage\Blob\Helpers\DateHelper;
 use AzureOss\Storage\Common\ApiVersion;
 use AzureOss\Storage\Common\Auth\StorageSharedKeyCredential;
+use AzureOss\Storage\Common\Helpers\DateHelper;
 use GuzzleHttp\Psr7\Query;
 
 /**

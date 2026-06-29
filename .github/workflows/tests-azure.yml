@@ -2,7 +2,7 @@ on:
   pull_request:
   workflow_dispatch: ~
 
-name: Azure Infrastructure Tests
+name: Azure Infrastructure Coverage
 
 permissions:
   id-token: write
@@ -10,22 +10,11 @@ permissions:
 
 jobs:
   azure-tests:
-    name: Azure Tests - PHP ${{ matrix.php-version }}
+    name: Azure Coverage - PHP 8.5
 
     environment: azure-testing
 
-    strategy:
-      fail-fast: false
-      matrix:
-        operating-system:
-          - "ubuntu-latest"
-        php-version:
-          - "8.2"
-          - "8.3"
-          - "8.4"
-          - "8.5"
-
-    runs-on: ${{ matrix.operating-system }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -44,11 +33,11 @@ jobs:
       - name: Deploy Azure Infrastructure
         id: deploy
         run: |
-          RG_NAME="rg-storage-test-php${{ matrix.php-version }}-${{ github.run_id }}"
+          RG_NAME="rg-storage-coverage-php85-${{ github.run_id }}"
           echo "resource_group=${RG_NAME}" >> $GITHUB_OUTPUT
 
           az deployment sub create \
-            --name "deploy-${{ github.run_id }}-php${{ matrix.php-version }}" \
+            --name "deploy-coverage-${{ github.run_id }}-php85" \
             --location eastus \
             --template-file infra/main.bicep \
             --parameters resourceGroupName="${RG_NAME}" \
@@ -88,12 +77,12 @@ jobs:
       - name: Install PHP with extensions
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-version }}
+          php-version: "8.5"
           extensions: curl json
-          coverage: none
+          coverage: pcov
 
       - name: Download dependencies
-        run: composer install --no-interaction --no-progress --optimize-autoloader
+        run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Generate workload identity token file
         run: |
@@ -120,12 +109,29 @@ jobs:
           printf '%s' "${TOKEN_VALUE}" > "${TOKEN_FILE}"
           echo "AZURE_FEDERATED_TOKEN_FILE=${TOKEN_FILE}" >> "${GITHUB_ENV}"
 
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_IDENTITY_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_IDENTITY_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_IDENTITY_CLIENT_SECRET }}
-        run: ./vendor/bin/paratest --processes=4 --display-skipped --display-warnings
+        run: ./vendor/bin/pest tests --parallel --display-skipped --display-warnings --coverage-cobertura coverage.xml --coverage-html coverage-html
+
+      - name: Code coverage summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage.xml
+          badge: true
+          format: markdown
+          output: both
+
+      - name: Append coverage summary
+d        run: cat code-coverage-results.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html
 
       - name: Unmount Azure File Share
         if: always()

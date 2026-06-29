@@ -16,6 +16,10 @@ compatibility.
 
 You can read the documentation [here](https://php-oss-for-azure.github.io).
 
+## Testing
+
+- Run the full test suite, including architecture tests, with `./vendor/bin/pest tests --parallel --display-skipped --display-warnings`.
+
 ## Package ecosystem
 
 - **[azure-oss/storage](https://packagist.org/packages/azure-oss/storage)** — Meta package for the Storage SDKs

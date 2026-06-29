@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- File share SAS generation now uses the shared storage-common date helper for SAS timestamp formatting.
+
 ## 0.1.0
 
 ### Added
