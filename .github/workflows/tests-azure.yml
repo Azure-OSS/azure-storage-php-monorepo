@@ -2,7 +2,7 @@ on:
   pull_request:
   workflow_dispatch: ~
 
-name: Azure Infrastructure Coverage
+name: Azure Infrastructure Tests
 
 permissions:
   id-token: write
@@ -10,9 +10,18 @@ permissions:
 
 jobs:
   azure-tests:
-    name: Azure Coverage - PHP 8.5
+    name: Azure Tests - PHP ${{ matrix.php-version }}
 
     environment: azure-testing
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version:
+          - "8.2"
+          - "8.3"
+          - "8.4"
+          - "8.5"
 
     runs-on: ubuntu-latest
 
@@ -33,11 +42,11 @@ jobs:
       - name: Deploy Azure Infrastructure
         id: deploy
         run: |
-          RG_NAME="rg-storage-coverage-php85-${{ github.run_id }}"
+          RG_NAME="rg-storage-coverage-php${{ matrix.php-version }}-${{ github.run_id }}"
           echo "resource_group=${RG_NAME}" >> $GITHUB_OUTPUT
 
           az deployment sub create \
-            --name "deploy-coverage-${{ github.run_id }}-php85" \
+            --name "deploy-coverage-${{ github.run_id }}-php${{ matrix.php-version }}" \
             --location eastus \
             --template-file infra/main.bicep \
             --parameters resourceGroupName="${RG_NAME}" \
@@ -77,7 +86,7 @@ jobs:
       - name: Install PHP with extensions
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.5"
+          php-version: ${{ matrix.php-version }}
           extensions: curl json
           coverage: pcov
 
@@ -130,7 +139,7 @@ jobs:
       - name: Upload HTML coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-html
+          name: coverage-html-php${{ matrix.php-version }}
           path: coverage-html
 
       - name: Unmount Azure File Share
