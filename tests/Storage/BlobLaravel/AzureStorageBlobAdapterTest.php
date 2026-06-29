@@ -8,6 +8,7 @@ use AzureOss\Storage\BlobLaravel\AzureStorageBlobAdapter;
 use AzureOss\Storage\BlobLaravel\AzureStorageBlobServiceProvider;
 use AzureOss\Tests\RequiresEnvironmentVariables;
 use AzureOss\Tests\Storage\CreatesTempContainers;
+use AzureOss\Tests\Storage\ResolvesBlobConnectionSettings;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -18,7 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 
 class AzureStorageBlobAdapterTest extends TestCase
 {
-    use CreatesTempContainers, RequiresEnvironmentVariables;
+    use CreatesTempContainers, RequiresEnvironmentVariables, ResolvesBlobConnectionSettings;
 
     protected function getPackageProviders($app): array
     {
@@ -304,37 +305,14 @@ class AzureStorageBlobAdapterTest extends TestCase
     #[Test]
     public function driver_works_with_token(): void
     {
-        $endpoint = getenv('AZURE_STORAGE_BLOB_ENDPOINT');
-        $accountName = getenv('AZURE_STORAGE_BLOB_ACCOUNT_NAME');
-
-        $hasEndpoint = is_string($endpoint) && $endpoint !== '';
-        $hasAccountName = is_string($accountName) && $accountName !== '';
-
-        self::getFirstAvailableEnvironmentVariable([
-            'AZURE_STORAGE_BLOB_ENDPOINT',
-            'AZURE_STORAGE_BLOB_ACCOUNT_NAME',
-        ]);
-
-        $tenantId = self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_TENANT_ID');
-        $clientId = self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_CLIENT_ID');
-        $clientSecret = self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_CLIENT_SECRET');
-
-        $container = $this->tempContainer('laravel-');
-
-        $diskConfig = [
+        config(['filesystems.disks.azure' => [
             'driver' => 'azure-storage-blob',
-            'tenant_id' => $tenantId,
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-            'container' => $container->containerName,
-        ];
-        if ($hasEndpoint) {
-            $diskConfig['endpoint'] = $endpoint;
-        } else {
-            $diskConfig['account_name'] = $accountName;
-        }
-
-        config(['filesystems.disks.azure' => $diskConfig]);
+            'tenant_id' => self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_TENANT_ID'),
+            'client_id' => self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_CLIENT_ID'),
+            'client_secret' => self::getRequiredEnvironmentVariable('AZURE_STORAGE_BLOB_CLIENT_SECRET'),
+            'container' => $this->tempContainer('laravel-')->containerName,
+            'account_name' => self::getRequiredBlobAccountNameEnvironmentValue(),
+        ]]);
 
         $driver = Storage::disk('azure');
         self::assertInstanceOf(AzureStorageBlobAdapter::class, $driver);
