@@ -100,7 +100,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_IDENTITY_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_IDENTITY_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_IDENTITY_CLIENT_SECRET }}
-        run: ./vendor/bin/phpunit
+        run: ./vendor/bin/paratest --processes=4 --display-skipped --display-warnings
 
       - name: Unmount Azure File Share
         if: always()
