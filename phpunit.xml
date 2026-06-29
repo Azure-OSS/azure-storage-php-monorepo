@@ -14,9 +14,6 @@
     </php>
 
     <testsuites>
-        <testsuite name="default">
-            <directory>tests</directory>
-        </testsuite>
         <testsuite name="unit">
             <directory suffix="Test.php">tests/Identity/Unit</directory>
             <directory suffix="Test.php">tests/Storage/Blob/Unit</directory>
