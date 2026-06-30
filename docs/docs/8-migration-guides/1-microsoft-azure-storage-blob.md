@@ -2,32 +2,26 @@
 sidebar_position: 1
 slug: /migration-guides/microsoft-azure-storage-blob
 title: Migrate from microsoft/azure-storage-blob
-description: Move from the deprecated Microsoft Azure Blob SDK for PHP to azure-oss/storage-blob.
+description: A practical path from BlobRestProxy to the modern azure-oss Blob client model.
 ---
 
-`azure-oss/storage-blob` is the replacement package for `microsoft/azure-storage-blob`.
+`azure-oss/storage-blob` is the package to move to if your current application still depends on `microsoft/azure-storage-blob`.
 
-If your current code is built on `BlobRestProxy`, the main migration is:
+This is a very doable migration, but it is not a search-and-replace exercise. The big change is architectural: you move from one broad proxy object to a set of smaller clients that match how Blob Storage is actually shaped.
 
-- package name change
-- service client API change
-- updated auth model
-- opportunity to adopt newer Blob features and docs
+## What changes, at a glance
 
-## Detailed comparison
-
-| Area | `microsoft/azure-storage-blob` | `azure-oss/storage-blob` |
+| Area | Legacy package | `azure-oss/storage-blob` |
 | --- | --- | --- |
-| Primary client | `BlobRestProxy` | `BlobServiceClient`, `BlobContainerClient`, `BlobClient` |
+| Main entry point | `BlobRestProxy` | `BlobServiceClient` |
+| How work is scoped | Pass container and blob names into methods | Narrow from service to container to blob clients |
 | PHP target | PHP `>=5.6` | PHP `^8.2` |
-| Auth model | Connection strings, SAS endpoints, token credential entry point | Connection strings, shared key, SAS auth, Microsoft Entra ID via `azure-oss/identity` |
-| Blob feature emphasis | Containers, block/page blobs, metadata, leases, snapshots | Containers, metadata, leases, tags, versions, snapshots, soft delete restore, hierarchical listing, SAS builders |
-| Local development | Older SDK guidance | Explicit Azurite support in the current docs |
-| Package direction | Deprecated legacy line | Current community-maintained line |
+| Auth | Connection strings and SAS-style endpoints | Connection strings, shared key, SAS, Microsoft Entra ID via `azure-oss/identity` |
+| Documentation focus | Legacy SDK usage | Modern Blob features, SAS, tags, versions, leases, Azurite |
 
-## What changes in code
+## The mental-model shift to get right
 
-The legacy SDK creates a single proxy:
+Old code usually starts here:
 
 ```php
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
@@ -35,7 +29,7 @@ use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 $blobClient = BlobRestProxy::createBlobService($connectionString);
 ```
 
-The new SDK starts with a service client and then narrows to a container or blob:
+New code starts one layer higher, then narrows with intent:
 
 ```php
 use AzureOss\Storage\Blob\BlobServiceClient;
@@ -45,9 +39,9 @@ $container = $service->getContainerClient('documents');
 $blob = $container->getBlobClient('report.pdf');
 ```
 
-That hierarchy is the biggest conceptual change in the migration.
+That is the core idea of the migration. Once you stop thinking "one proxy, many method calls" and start thinking "service, then container, then blob", the rest falls into place much faster.
 
-## Migration steps
+## A low-risk migration plan
 
 ### 1. Replace the package
 
@@ -56,15 +50,17 @@ composer remove microsoft/azure-storage-blob
 composer require azure-oss/storage-blob
 ```
 
-### 2. Replace `BlobRestProxy`
+### 2. Keep auth boring on the first pass
 
-Common mapping:
+If the current app works with a connection string, keep using a connection string first:
 
-- `BlobRestProxy` -> `BlobServiceClient`
-- container name arguments used repeatedly in method calls -> `BlobContainerClient`
-- blob name arguments used repeatedly in method calls -> `BlobClient`
+```php
+$service = BlobServiceClient::fromConnectionString($connectionString);
+```
 
-### 3. Move repeated container and blob names into clients
+That keeps the first deployment focused on the client API shift instead of mixing in an auth redesign.
+
+### 3. Replace repeated names with scoped clients
 
 Old style:
 
@@ -82,46 +78,50 @@ $blob = $container->getBlobClient($blobName);
 $blob->upload($contents);
 ```
 
-### 4. Choose the right auth path
+If you see the same container name threaded through a file again and again, that is your sign to introduce a `BlobContainerClient`.
 
-Stay with connection strings if you want the lowest-risk migration first.
+### 4. Re-test every signed access path
 
-Move to token-based auth later if you want:
+Blob migrations often look successful until the first generated URL hits production.
 
+Verify:
+
+- blob SAS URLs
+- container SAS URLs
+- account-level SAS workflows, if you use them
+- response header overrides on signed links
+- any snapshot- or version-specific URL behavior
+
+### 5. Only modernize auth after the SDK move is stable
+
+Once the package migration is settled, decide whether you want to move beyond connection strings toward:
+
+- shared key credentials
 - Microsoft Entra ID
 - workload identity
 - managed identity
 
-See [Blob installation](../2-storage-blob/1-installation.md) and [Microsoft Entra ID](../2-storage-blob/3-authorize/1-entra.md).
+Those are good upgrades. They are just easier to reason about after the client migration is already done.
 
-### 5. Re-test SAS behavior
+## What tends to get better immediately
 
-If your app generates signed URLs, verify:
-
-- blob SAS URLs
-- container SAS URLs
-- any account-level SAS workflows
-- snapshot- or version-specific links if you adopt those features
-
-## What gets better after migrating
-
-- Clearer client boundaries between service, container, and blob operations
-- First-class docs for tags, versions, hierarchical listing, leases, and SAS generation
-- Modern auth story aligned with `azure-oss/identity`
-- Better alignment with the Flysystem and Laravel packages in this ecosystem
-- Azurite-friendly local development story
+- code that reflects the actual shape of Blob Storage
+- cleaner boundaries between service, container, and blob operations
+- better docs for tags, versions, leases, listing, and SAS generation
+- a path into the Flysystem and Laravel packages that use the same Blob foundation
+- clearer local development guidance through Azurite
 
 ## Migration checklist
 
-- Replace `BlobRestProxy` imports
-- Replace service calls with service/container/blob clients
-- Re-test uploads, downloads, deletes, list operations, and metadata writes
-- Re-test signed URL generation
-- Re-test any token-based auth path separately from shared key auth
+- Replace `BlobRestProxy` imports and construction
+- Introduce `BlobServiceClient`, then scope down to container and blob clients
+- Re-test uploads, downloads, deletes, metadata, and listing
+- Re-test all SAS and signed URL flows
+- Defer auth modernization until after the client migration is green
 
-## Next docs
+## Keep reading
 
 - [Blob overview](../2-storage-blob/0-overview.md)
 - [Blob installation](../2-storage-blob/1-installation.md)
 - [Blob quickstart](../2-storage-blob/2-quickstart.md)
-- [What to use after microsoft/azure-storage-blob](../9-blog/1-what-to-use-after-microsoft-azure-storage-blob.md)
+- [What to Use After microsoft/azure-storage-blob](../9-blog/1-what-to-use-after-microsoft-azure-storage-blob.md)

@@ -2,28 +2,26 @@
 sidebar_position: 2
 slug: /migration-guides/league-flysystem-azure-blob-storage
 title: Migrate from league/flysystem-azure-blob-storage
-description: Move from the abandoned Flysystem Azure Blob adapter to azure-oss/storage-blob-flysystem.
+description: A focused Flysystem migration from the abandoned Azure adapter to the modern azure-oss replacement.
 ---
 
-`azure-oss/storage-blob-flysystem` replaces `league/flysystem-azure-blob-storage`.
+`azure-oss/storage-blob-flysystem` is the package you want if you are moving off `league/flysystem-azure-blob-storage`.
 
-This is usually the cleanest migration in the set because both packages target Flysystem v3. The main differences are the underlying Blob SDK and the constructor shape.
+This is usually the smoothest migration in the set because the Flysystem layer itself stays familiar. The real change is that you stop building on the legacy Microsoft Blob SDK and switch to a maintained Blob stack underneath the adapter.
 
-## Detailed comparison
+## What actually changes
 
-| Area | `league/flysystem-azure-blob-storage` | `azure-oss/storage-blob-flysystem` |
+| Area | Old adapter | New adapter |
 | --- | --- | --- |
-| Package status | Abandoned in favor of `azure-oss/storage-blob-flysystem` | Current package |
-| Underlying SDK | `microsoft/azure-storage-blob` | `azure-oss/storage-blob` |
+| Package status | Abandoned | Current package |
+| Blob SDK underneath | `microsoft/azure-storage-blob` | `azure-oss/storage-blob` |
 | Adapter namespace | `League\\Flysystem\\AzureBlobStorage\\AzureBlobStorageAdapter` | `AzureOss\\Storage\\BlobFlysystem\\AzureBlobStorageAdapter` |
-| Constructor entry point | `BlobRestProxy` plus container name | `BlobContainerClient` |
-| Temp URLs | Requires legacy service settings to sign | Uses the new Blob client's SAS capability |
-| Public URL mode | URL generation via the legacy adapter | Built-in `isPublicContainer` behavior for direct public URLs |
-| Upload config | Legacy adapter-specific options | Supports modern `httpHeaders`, transfer tuning, and conditional write config |
+| Constructor input | `BlobRestProxy` plus container name | `BlobContainerClient` |
+| URL behavior | Legacy adapter patterns | Modern SAS handling and public-container URL support |
 
-## What changes in code
+## The key refactor to understand
 
-Legacy setup:
+Old setup:
 
 ```php
 use League\Flysystem\AzureBlobStorage\AzureBlobStorageAdapter;
@@ -48,7 +46,9 @@ $adapter = new AzureBlobStorageAdapter($container);
 $filesystem = new Filesystem($adapter);
 ```
 
-## Migration steps
+The adapter now receives a `BlobContainerClient`, which is a cleaner abstraction than handing it a broad service proxy and a free-floating container name.
+
+## A practical migration sequence
 
 ### 1. Replace the package
 
@@ -57,7 +57,7 @@ composer remove league/flysystem-azure-blob-storage
 composer require azure-oss/storage-blob-flysystem
 ```
 
-### 2. Update the namespace import
+### 2. Update the adapter import
 
 Replace:
 
@@ -73,37 +73,41 @@ use AzureOss\Storage\BlobFlysystem\AzureBlobStorageAdapter;
 
 ### 3. Build a `BlobContainerClient`
 
-The new adapter does not take a legacy `BlobRestProxy`. It takes a container client from `azure-oss/storage-blob`.
+The new adapter does not accept `BlobRestProxy`.
 
-### 4. Re-check URL generation
+Create a `BlobServiceClient`, then derive the container client that your filesystem should be scoped to.
 
-If your old code relied on temporary URLs, test:
+### 4. Re-test URL behavior before you call it done
 
-- `temporaryUrl()`
-- `publicUrl()`
-- public container behavior
-- custom response header overrides in signed URLs
+Pay special attention to:
 
-### 5. Re-check metadata and conditional writes
+- temporary URLs
+- public URLs
+- public container handling
+- response header overrides on signed URLs
 
-The new adapter exposes useful upload config inputs such as:
+These are usually the highest-value things to verify after the constructor update.
 
-- `httpHeaders`
-- `conditions`
-- transfer sizing and concurrency values
+### 5. Revisit any implicit upload behavior
 
-That is a good moment to make previously implicit behavior explicit.
+The new adapter exposes clearer write options around headers, conditions, and transfer behavior. If your previous setup relied on defaults you never documented, this is a good moment to make them explicit.
 
-## What gets better after migrating
+## What gets better
 
-- A maintained adapter on top of the maintained Blob SDK
-- Cleaner layering with `BlobContainerClient`
-- Better alignment with the Laravel filesystem driver
-- Built-in support for public-container URL generation and modern SAS handling
-- More explicit write options for metadata, headers, and conditions
+- a maintained adapter on top of a maintained Blob SDK
+- a cleaner boundary through `BlobContainerClient`
+- better alignment with the Laravel filesystem package
+- clearer support for public URL generation and modern SAS flows
 
-## Next docs
+## Migration checklist
+
+- Replace the package and namespace import
+- Create a `BlobContainerClient` instead of a legacy proxy
+- Re-test temporary and public URL behavior
+- Re-test metadata, headers, and any conditional write paths
+
+## Keep reading
 
 - [Flysystem installation](../3-storage-blob-flysystem/1-installation.md)
 - [Flysystem quickstart](../3-storage-blob-flysystem/2-quickstart.md)
-- [Migrating from league/flysystem-azure-blob-storage](../9-blog/2-migrating-from-league-flysystem-azure-blob-storage.md)
+- [Leaving league/flysystem-azure-blob-storage Behind](../9-blog/2-migrating-from-league-flysystem-azure-blob-storage.md)

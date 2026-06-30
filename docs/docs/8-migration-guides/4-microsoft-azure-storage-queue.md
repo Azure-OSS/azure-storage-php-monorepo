@@ -2,27 +2,26 @@
 sidebar_position: 4
 slug: /migration-guides/microsoft-azure-storage-queue
 title: Migrate from microsoft/azure-storage-queue
-description: Move from the deprecated Microsoft Azure Queue SDK for PHP to azure-oss/storage-queue.
+description: A practical upgrade path from QueueRestProxy to the modern azure-oss Queue clients.
 ---
 
-`azure-oss/storage-queue` replaces `microsoft/azure-storage-queue`.
+`azure-oss/storage-queue` is the package to adopt if your code still uses `microsoft/azure-storage-queue`.
 
-Like the Blob migration, the main shift is from a single `*RestProxy` to a clearer client hierarchy.
+Like the Blob migration, the headline change is the move away from a single `*RestProxy`. Unlike the Blob migration, the part most likely to bite you is not the API shape. It is queue behavior: invisibility windows, retries, and TTL assumptions.
 
-## Detailed comparison
+## What changes
 
-| Area | `microsoft/azure-storage-queue` | `azure-oss/storage-queue` |
+| Area | Legacy package | `azure-oss/storage-queue` |
 | --- | --- | --- |
-| Primary client | `QueueRestProxy` | `QueueServiceClient`, `QueueClient` |
+| Main entry point | `QueueRestProxy` | `QueueServiceClient` |
+| Queue-scoped work | Queue name passed into methods | `QueueClient` |
 | PHP target | PHP `>=5.6` | PHP `^8.2` |
-| Auth model | Connection strings, SAS endpoints, token credential entry point | Connection strings, shared key, SAS auth, Microsoft Entra ID via `azure-oss/identity` |
-| Queue operations | Queue CRUD and message CRUD | Queue CRUD, message send/receive/update/delete, clearer docs structure |
-| Local development | Legacy SDK guidance | Explicit Azurite support in current docs |
-| Package direction | Deprecated legacy line | Current community-maintained line |
+| Auth | Connection strings, SAS-style endpoints | Connection strings, shared key, SAS, Microsoft Entra ID via `azure-oss/identity` |
+| Local development | Legacy guidance | Current docs with Azurite coverage |
 
-## What changes in code
+## The mental shift
 
-Legacy setup:
+Old setup:
 
 ```php
 use MicrosoftAzure\Storage\Queue\QueueRestProxy;
@@ -39,9 +38,9 @@ $service = QueueServiceClient::fromConnectionString($connectionString);
 $queue = $service->getQueueClient('jobs');
 ```
 
-Old queue operations often repeated the queue name in each call. The new package encourages a dedicated `QueueClient`.
+That smaller `QueueClient` is the important improvement. It lets the code talk to one queue with one object instead of passing queue names through every call.
 
-## Migration steps
+## A migration plan that stays sane
 
 ### 1. Replace the package
 
@@ -50,40 +49,65 @@ composer remove microsoft/azure-storage-queue
 composer require azure-oss/storage-queue
 ```
 
-### 2. Replace `QueueRestProxy`
+### 2. Keep the first auth path conservative
 
-Map:
+If your app already works with a connection string, start there again:
+
+```php
+$service = QueueServiceClient::fromConnectionString($connectionString);
+```
+
+That keeps the migration focused on the SDK behavior first.
+
+### 3. Replace `QueueRestProxy` with scoped clients
+
+Map the broad proxy model to the new structure:
 
 - `QueueRestProxy` -> `QueueServiceClient`
 - repeated queue name arguments -> `QueueClient`
 
-### 3. Re-test message invisibility and TTL behavior
+### 4. Re-test visibility and timing behavior on purpose
 
-Verify:
+Do not treat this as routine CRUD validation.
+
+Explicitly verify:
 
 - receive visibility timeout
 - update visibility timeout
 - message TTL assumptions
-- worker concurrency assumptions in your application
+- delayed processing expectations
+- concurrency behavior in your workers
 
-### 4. Re-test auth separately from queue logic
+Queue migrations are successful when workers behave predictably, not when the first `sendMessage()` call works.
 
-If you move beyond connection strings, test the auth layer independently first:
+### 5. Modernize auth later, separately
 
-- shared key
-- SAS endpoint usage
+Once the queue behavior is stable, decide whether to keep connection strings or move toward:
+
+- shared key credentials
+- SAS-based access
 - Microsoft Entra ID
 
-## What gets better after migrating
+Separate those concerns and the rollout gets much easier to debug.
 
-- A cleaner service client and queue client model
-- Docs aligned with the rest of the `azure-oss` ecosystem
-- Modern auth integration via `azure-oss/identity`
-- Better local development story with Azurite
+## What gets better
 
-## Next docs
+- clearer service and queue boundaries in the code
+- a Queue SDK that fits the rest of the `azure-oss` ecosystem
+- current docs and Azurite guidance
+- a better long-term auth story through `azure-oss/identity`
+
+## Migration checklist
+
+- Replace the package
+- Swap `QueueRestProxy` for `QueueServiceClient`
+- Introduce `QueueClient` where queue names were repeatedly passed around
+- Re-test invisibility, retries, and TTL behavior
+- Only then evaluate auth modernization
+
+## Keep reading
 
 - [Queue overview](../5-storage-queue/0-overview.md)
 - [Queue installation](../5-storage-queue/1-installation.md)
 - [Queue quickstart](../5-storage-queue/2-quickstart.md)
-- [Modern Azure Queue for Laravel without squigg/azure-queue-laravel](../9-blog/4-modern-azure-queue-for-laravel.md)
+- [A Modern Azure Queue Driver for Laravel](../9-blog/4-modern-azure-queue-for-laravel.md)

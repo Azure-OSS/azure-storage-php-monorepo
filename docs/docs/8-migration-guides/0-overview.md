@@ -2,45 +2,39 @@
 sidebar_position: 0
 slug: /migration-guides
 title: Migration Guides Overview
-description: Compare deprecated Azure PHP packages with the azure-oss replacements and choose the right migration path.
+description: Practical upgrade paths from legacy Azure PHP packages to the community-maintained azure-oss ecosystem.
 ---
 
-These guides are for teams moving away from older Azure PHP packages toward the community-maintained `azure-oss` ecosystem.
+This section exists because Azure PHP search results are full of ghosts.
 
-They are intentionally practical:
+Old package names still rank well. Old examples still circulate. Old integrations still look plausible until you notice the date, the PHP target, or the dependency chain underneath them.
 
-- They compare the legacy package and the replacement package directly.
-- They call out config and code changes that affect real upgrades.
-- They are honest about where a package is already a strong replacement and where it is still early.
+These guides are here to cut through that.
 
-## Replacement matrix
+They are written for teams doing real upgrades, not toy rewrites:
 
-| Legacy package | Replacement | Replacement level | Best starting point |
+- they compare the old package with the current replacement
+- they call out where the migration is genuinely straightforward
+- they say plainly when the answer is "not a drop-in replacement yet"
+
+## Start here: which package are you on now?
+
+| Current package | Move to | What kind of migration is it? | Start here |
 | --- | --- | --- | --- |
-| `microsoft/azure-storage-blob` | `azure-oss/storage-blob` | Direct replacement for Blob SDK work | [Migrate from microsoft/azure-storage-blob](./1-microsoft-azure-storage-blob.md) |
-| `league/flysystem-azure-blob-storage` | `azure-oss/storage-blob-flysystem` | Direct replacement for Flysystem v3 | [Migrate from league/flysystem-azure-blob-storage](./2-league-flysystem-azure-blob-storage.md) |
-| `matthewbdaly/laravel-azure-storage` | `azure-oss/storage-blob-laravel` | Direct replacement for Laravel filesystem use | [Migrate from matthewbdaly/laravel-azure-storage](./3-matthewbdaly-laravel-azure-storage.md) |
-| `microsoft/azure-storage-queue` | `azure-oss/storage-queue` | Direct replacement for Queue SDK work | [Migrate from microsoft/azure-storage-queue](./4-microsoft-azure-storage-queue.md) |
-| `squigg/azure-queue-laravel` | `azure-oss/storage-queue-laravel` | Direct replacement for Laravel queue use | [Migrate from squigg/azure-queue-laravel](./5-squigg-azure-queue-laravel.md) |
+| `microsoft/azure-storage-blob` | `azure-oss/storage-blob` | Direct SDK replacement | [Migrate from microsoft/azure-storage-blob](./1-microsoft-azure-storage-blob.md) |
+| `league/flysystem-azure-blob-storage` | `azure-oss/storage-blob-flysystem` | Direct Flysystem replacement | [Migrate from league/flysystem-azure-blob-storage](./2-league-flysystem-azure-blob-storage.md) |
+| `matthewbdaly/laravel-azure-storage` | `azure-oss/storage-blob-laravel` | Direct Laravel filesystem replacement | [Migrate from matthewbdaly/laravel-azure-storage](./3-matthewbdaly-laravel-azure-storage.md) |
+| `microsoft/azure-storage-queue` | `azure-oss/storage-queue` | Direct SDK replacement | [Migrate from microsoft/azure-storage-queue](./4-microsoft-azure-storage-queue.md) |
+| `squigg/azure-queue-laravel` | `azure-oss/storage-queue-laravel` | Direct Laravel queue replacement | [Migrate from squigg/azure-queue-laravel](./5-squigg-azure-queue-laravel.md) |
 | `microsoft/azure-storage-file` | `azure-oss/storage-file-share` | Partial replacement today | [Migrate from microsoft/azure-storage-file](./6-microsoft-azure-storage-file.md) |
 
-## Detailed comparison
+## What changes across almost every migration
 
-### Maintenance and package direction
+### 1. The PHP baseline jumps forward
 
-The main split in this ecosystem is not just old versus new. It is also:
+The old Microsoft storage SDKs were designed for a very different PHP era.
 
-- Legacy Microsoft SDK packages built around `*RestProxy` clients
-- Ecosystem integrations that still depend on those legacy Microsoft SDK packages
-- `azure-oss` packages that align Blob, Queue, File Share, Laravel, Flysystem, and Identity under one actively maintained PHP codebase
-
-That distinction matters because some wrappers are still installable, but they are still anchored to abandoned or retired storage SDKs underneath.
-
-### Runtime support
-
-The legacy Microsoft storage packages target PHP 5.6+.
-
-The `azure-oss` packages target modern PHP:
+The `azure-oss` packages target modern PHP and modern framework versions:
 
 - `azure-oss/storage-blob`: PHP `^8.2`
 - `azure-oss/storage-queue`: PHP `^8.2`
@@ -49,59 +43,64 @@ The `azure-oss` packages target modern PHP:
 - `azure-oss/storage-blob-laravel`: Laravel 10, 11, 12, and 13
 - `azure-oss/storage-queue-laravel`: Laravel 10, 11, 12, and 13
 
-That means migration is usually part of a broader modernization effort, not just a package rename.
+For many teams, that means the dependency upgrade is part of a broader modernization pass. That is normal.
 
-### Authentication and local development
+### 2. The client model gets more explicit
 
-The strongest auth improvements are in the Blob side of the ecosystem:
-
-- `azure-oss/storage-blob` and `azure-oss/storage-blob-laravel` support shared key, SAS auth, and Microsoft Entra ID flows through `azure-oss/identity`
-- The Laravel Blob driver supports `client_secret`, `client_certificate`, `workload_identity`, and `managed_identity`
-- Blob and Queue docs both include Azurite guidance for local development
-
-The Laravel Queue connector already supports the main Azure Queue authentication shapes most Laravel apps use today:
-
-- shared key via connection string
-- shared key via `account_name` and `account_key`
-- SAS-based auth when the connection string contains a shared access signature
-- custom queue endpoints for local development and emulator-style setups
-
-The Laravel Blob driver still exposes a broader credential matrix, but the Queue Laravel driver already covers the common connection-string and key-based deployment paths.
-
-### API shape
-
-The legacy Microsoft SDKs are centered on service-wide proxy classes:
+The legacy Microsoft SDKs were built around large proxy classes:
 
 - `BlobRestProxy`
 - `QueueRestProxy`
 - `FileRestProxy`
 
-The `azure-oss` packages use a more focused client hierarchy:
+The newer packages use smaller, better-scoped clients:
 
 - Blob: `BlobServiceClient` -> `BlobContainerClient` -> `BlobClient`
 - Queue: `QueueServiceClient` -> `QueueClient`
 - File Share: `ShareServiceClient` -> `ShareClient` -> `ShareDirectoryClient` / `ShareFileClient`
 
-That usually makes the new code more explicit, but it also means migrations are not pure namespace changes.
+That is not just an API rename. It changes how you structure storage code.
 
-### Ecosystem integrations
+### 3. Auth gets less boxed in
 
-The new integrations are designed to fit together:
+The Blob side of the ecosystem especially benefits from the move:
 
-- Blob SDK and Flysystem adapter share the same Blob client model
-- Laravel filesystem builds on the Flysystem adapter
+- shared key still works
+- connection strings still work
+- SAS flows are first-class
+- Microsoft Entra ID is available through `azure-oss/identity`
+
+The Laravel Blob package also supports `client_secret`, `client_certificate`, `workload_identity`, and `managed_identity`.
+
+Queue Laravel already covers the auth shapes most apps need in practice, especially connection strings, shared key config, SAS-bearing connection strings, and custom endpoints for local development.
+
+### 4. The ecosystem finally lines up
+
+One of the nicest things about the `azure-oss` packages is that they belong to the same story:
+
+- Blob SDK and Flysystem adapter fit together
+- Laravel filesystem builds on the Flysystem layer
 - Laravel queue builds on the Queue SDK
-- Shared auth, HTTP, SAS, and API-version behavior live in `azure-oss/storage-common`
+- shared HTTP, auth, and SAS behavior lives in `azure-oss/storage-common`
 
-That gives the new ecosystem a more coherent maintenance story than mixing packages from different maintainers and eras.
+That coherence is worth a lot once your app grows past a single use case.
 
-### Important File Share caveat
+## The one migration that needs extra honesty
 
-`azure-oss/storage-file-share` should not be described as a drop-in replacement for every `microsoft/azure-storage-file` scenario yet.
+`azure-oss/storage-file-share` should not be sold as a universal drop-in replacement for every `microsoft/azure-storage-file` workload yet.
 
-Today its public documentation is centered on Azure Files SAS generation and service access patterns. If your old code relies heavily on SDK-driven share, directory, and file CRUD, review the [File Share migration guide](./6-microsoft-azure-storage-file.md) before promising a one-step swap.
+Today it is strongest for Azure Files service access patterns and SAS generation. If your application mainly wants mounted filesystem behavior, an SMB or NFS mount may still be the better destination.
 
-## Start with the guide that matches your current package
+That is not a weakness in the docs. It is the docs doing their job.
+
+## How to use these guides well
+
+- Pick the guide that matches the package you have today, not the package you eventually want.
+- Keep the first migration conservative.
+- Re-test auth and signed URL behavior separately from the basic CRUD path.
+- Treat queue timing and visibility settings as behavioral changes, not just config changes.
+
+## Choose your path
 
 - Blob SDK: [Migrate from microsoft/azure-storage-blob](./1-microsoft-azure-storage-blob.md)
 - Flysystem adapter: [Migrate from league/flysystem-azure-blob-storage](./2-league-flysystem-azure-blob-storage.md)
@@ -110,4 +109,4 @@ Today its public documentation is centered on Azure Files SAS generation and ser
 - Laravel queue: [Migrate from squigg/azure-queue-laravel](./5-squigg-azure-queue-laravel.md)
 - File Share SDK: [Migrate from microsoft/azure-storage-file](./6-microsoft-azure-storage-file.md)
 
-If you want the higher-level “why migrate now?” version first, start with the pages in [Blog](../9-blog/1-what-to-use-after-microsoft-azure-storage-blob.md).
+If you want the higher-level, opinionated take first, start with the pages in [Blog](../9-blog/1-what-to-use-after-microsoft-azure-storage-blob.md).

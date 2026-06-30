@@ -1,50 +1,61 @@
 ---
 sidebar_position: 4
 slug: /blog/modern-azure-queue-for-laravel
-title: Modern Azure Queue for Laravel without squigg/azure-queue-laravel
-description: The modern Laravel queue driver for Azure Storage Queues and how it compares with the older package line.
+title: A Modern Azure Queue Driver for Laravel
+description: Why Laravel teams should move from squigg/azure-queue-laravel to azure-oss/storage-queue-laravel.
 ---
 
-If you are looking for a modern Azure Queue driver for Laravel, the recommended package in this ecosystem is `azure-oss/storage-queue-laravel`.
+Queue migrations are deceptive.
 
-It replaces `squigg/azure-queue-laravel` and aligns your queue integration with `azure-oss/storage-queue`.
+At first glance, moving from `squigg/azure-queue-laravel` to `azure-oss/storage-queue-laravel` looks like a simple config refresh. Rename a few fields, change the driver, move on.
 
-## Why teams move
+That is partly true. It is also how teams end up underestimating the one thing that matters most in queue code: behavior.
 
-The older package still works for many teams, but it is built on the legacy Microsoft Queue SDK and older config conventions.
+## The package swap matters because operations matter
 
-The new package keeps the Laravel integration focused while modernizing the queue layer underneath it.
+The old package is tied to the legacy Microsoft Queue SDK.
 
-## What changes in practice
+The new package puts Laravel on top of `azure-oss/storage-queue`, which gives the queue layer a maintained base and a config model that looks more like something you would actually want to support in 2026.
 
-### Cleaner configuration
+That includes:
 
-Instead of fields like `accountname`, `key`, `timeout`, and `endpoint`, the new package uses more explicit names:
-
-- `account_name`
-- `account_key`
-- `retry_after`
-- `endpoint_suffix`
-
-### Better connection-string support
-
-If your infrastructure already stores a storage connection string, the new connector can use it directly.
-
-That gives the package a more flexible auth story than the older Laravel queue driver:
-
-- shared key connection strings
-- explicit account name and key config
+- native connection string support
+- explicit shared-key config
 - SAS-bearing connection strings
-- custom queue endpoints for local and emulator-style environments
+- custom endpoints for local and emulator-style setups
 
-### Better Laravel alignment
+None of that is glamorous. All of it reduces friction.
 
-The new connector adds useful queue options such as:
+## The real migration question is this
 
-- `time_to_live`
-- `create_queue`
-- `after_commit`
+Will your workers behave the same way after the upgrade?
 
-## Read the migration guide
+That is the heart of it.
 
-Go to [Migrate from squigg/azure-queue-laravel](../8-migration-guides/5-squigg-azure-queue-laravel.md).
+Queue code is rarely judged by how elegant the config file looks. It is judged by whether jobs reappear too early, whether failed work is retried the way you expect, and whether local and cloud environments behave close enough to trust.
+
+That is why the move to `azure-oss/storage-queue-laravel` is worth doing, but also why it should be treated like an application behavior change, not just dependency cleanup.
+
+## What gets better
+
+- config names that read clearly
+- queue options like `retry_after`, `time_to_live`, and `after_commit`
+- a cleaner path for teams that already store Azure connection strings
+- one maintained queue stack from Laravel down to the SDK
+
+That is the sort of foundation you want before your job volume goes up, not after.
+
+## Migrate it like production infrastructure
+
+If you make this switch, test the boring things hard:
+
+- long-running jobs
+- retries
+- delayed jobs
+- local development against custom endpoints or Azurite-style setups
+
+The docs can help with the rename work. Your staging environment should validate the timing work.
+
+## Where to go next
+
+For the exact field mapping and worker-focused checklist, go to [Migrate from squigg/azure-queue-laravel](../8-migration-guides/5-squigg-azure-queue-laravel.md).

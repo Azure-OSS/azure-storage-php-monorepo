@@ -1,44 +1,68 @@
 ---
 sidebar_position: 2
 slug: /blog/migrating-from-league-flysystem-azure-blob-storage
-title: Migrating from league/flysystem-azure-blob-storage
-description: Why the old Flysystem Azure Blob adapter is no longer the best default and how the azure-oss replacement differs.
+title: Leaving league/flysystem-azure-blob-storage Behind
+description: Why this Flysystem migration is usually straightforward and still worth doing.
 ---
 
-`league/flysystem-azure-blob-storage` still appears in a lot of examples because Flysystem is widely trusted and the package name is memorable.
+`league/flysystem-azure-blob-storage` is one of those packages that still gets the benefit of a great name.
 
-The problem is that it is now abandoned in favor of `azure-oss/storage-blob-flysystem`.
+It sounds official. It sounds familiar. It sounds like the obvious thing to install.
 
-## Why the replacement matters
+The problem is that it is abandoned, and more importantly, it keeps your Flysystem layer tied to the legacy Microsoft Blob SDK.
 
-The old adapter is not just an old package name. It is also tied to the old Microsoft Blob SDK.
+That is why the modern move is not just "replace one adapter with another." It is really about getting your storage abstraction off old foundations and onto `azure-oss/storage-blob-flysystem`.
 
-That means staying on it keeps your storage abstraction attached to legacy Blob clients even if the rest of your PHP app has moved on.
+## This is the least dramatic migration in the set
 
-## What changes with the `azure-oss` adapter
+That is good news.
 
-- The adapter builds on `azure-oss/storage-blob`
-- It takes a `BlobContainerClient` instead of a legacy `BlobRestProxy`
-- It aligns with the Laravel filesystem driver in the same ecosystem
-- It keeps Flysystem v3 while modernizing the storage layer underneath
+If you already use Flysystem v3, this change is usually more like swapping the engine than rebuilding the car:
 
-## What you can do after migrating
+- the Flysystem mental model stays the same
+- your app still talks to a `Filesystem`
+- the big change is how the Azure adapter is created
 
-The biggest practical benefits are not flashy. They are the kinds of things teams appreciate six months later:
+So while the package name change matters, the real upgrade happens one layer down.
 
-- one maintained Blob stack instead of mixed generations of packages
-- cleaner signed URL behavior
-- clearer public-container behavior
-- easier reuse of Blob SDK knowledge between direct SDK code and Flysystem-backed code
+## What improves under the hood
 
-## When the migration is usually easy
+The old adapter is built on `microsoft/azure-storage-blob`.
 
-This upgrade is usually smooth if:
+The new one is built on `azure-oss/storage-blob`, which means the adapter now inherits a storage stack that is actively aligned with the rest of this ecosystem:
 
+- current Blob clients
+- modern SAS support
+- better docs for public URLs and temporary URLs
+- easier handoff between direct SDK code and Flysystem-backed code
+
+That matters any time your project stops being "just a filesystem disk" and starts needing storage-specific behavior.
+
+## The one code change to understand
+
+The old adapter starts with a `BlobRestProxy` and a container name.
+
+The new adapter starts with a `BlobContainerClient`.
+
+That is a healthier boundary. It means the adapter receives exactly the scope it needs, no more and no less. Once you see that, the migration becomes much easier to reason about.
+
+## When this migration is almost boring
+
+That is the sweet spot:
+
+- you already construct the adapter in one place
 - you already use Flysystem v3
-- you construct the adapter yourself
-- you can change the adapter namespace and constructor in one place
+- your app does not depend on odd adapter-specific behavior
+- your biggest concern is URL generation and upload behavior
 
-## Read the migration guide
+In that scenario, this is often a tidy refactor with a good payoff.
 
-Start with [Migrate from league/flysystem-azure-blob-storage](../8-migration-guides/2-league-flysystem-azure-blob-storage.md).
+## Why it is still worth doing
+
+Because abandoned infrastructure code has a way of becoming "fine" right up until the moment it is not.
+
+If your Blob adapter is the bridge between application code and storage, it is a good place to remove uncertainty. Moving to `azure-oss/storage-blob-flysystem` gives you a maintained adapter on top of a maintained SDK, and that is a much better place to keep building from.
+
+## Where to go next
+
+For the concrete namespace, constructor, and URL behavior changes, start with [Migrate from league/flysystem-azure-blob-storage](../8-migration-guides/2-league-flysystem-azure-blob-storage.md).

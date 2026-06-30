@@ -1,38 +1,49 @@
 ---
 sidebar_position: 3
 slug: /blog/laravel-azure-blob-storage-after-matthewbdaly-laravel-azure-storage
-title: Laravel Azure Blob Storage after matthewbdaly/laravel-azure-storage
-description: What Laravel teams should use now for Azure Blob Storage and what improves after the switch.
+title: The Modern Laravel Blob Stack After matthewbdaly/laravel-azure-storage
+description: What Laravel teams should use for Azure Blob Storage now, and why the upgrade is bigger than a disk config rename.
 ---
 
-If you are running Laravel and searching for an Azure Blob Storage driver after `matthewbdaly/laravel-azure-storage`, use `azure-oss/storage-blob-laravel`.
+If your Laravel app still uses `matthewbdaly/laravel-azure-storage`, the replacement package is `azure-oss/storage-blob-laravel`.
 
-## Why this is more than a package rename
+That is the practical answer.
 
-The older Laravel package sits on top of the old League adapter, which itself sits on top of the old Microsoft Blob SDK.
+The more interesting answer is why the move feels bigger than a disk-driver swap.
 
-So even if the Laravel surface looks simple, the stack underneath it is still the legacy one.
+## Your old disk is sitting on an old stack
 
-`azure-oss/storage-blob-laravel` changes that stack from the bottom up:
+The package may look like a thin Laravel integration, but underneath it sits a chain of legacy dependencies:
 
-- maintained Blob SDK
-- maintained Flysystem adapter
-- maintained Laravel driver
+- the old Laravel driver
+- the old League Flysystem Azure adapter
+- the old Microsoft Blob SDK
 
-## What Laravel teams usually care about most
+So when teams say, "The filesystem config still works, why touch it?", they are only looking at the top layer.
 
-### 1. Config clarity
+`azure-oss/storage-blob-laravel` replaces that entire stack with a maintained Blob SDK, a maintained Flysystem adapter, and a Laravel driver designed to fit today’s framework expectations.
 
-The new package makes it easier to standardize on:
+## This is where the upgrade gets interesting
+
+Laravel teams usually care about three things more than package history.
+
+### 1. Cleaner config
+
+The new driver is easier to read at a glance.
+
+Instead of old field names and compatibility baggage, you get config that spells out its intent:
 
 - `connection_string`
-- `account_name` and `account_key`
+- `account_name`
+- `account_key`
 - `temporary_url`
 - `is_public_container`
 
-### 2. Modern auth options
+That sounds cosmetic until you have to audit production config across four environments and three teammates.
 
-This is the biggest strategic upgrade.
+### 2. A real modern auth story
+
+This is the part that changes architecture conversations.
 
 The new package supports:
 
@@ -41,16 +52,29 @@ The new package supports:
 - `workload_identity`
 - `managed_identity`
 
-That matters for apps running on Azure where you want to reduce long-lived secrets.
+If your Laravel app runs on Azure, that means you are no longer trapped in the world where long-lived storage secrets feel like the only practical option.
 
-### 3. URL behavior
+### 3. URL behavior you can reason about
 
-The new driver gives you a cleaner story for:
+Blob disks always get judged on URLs.
 
-- public URLs
+Not in demos, but in the awkward cases:
+
+- public container links
 - signed temporary URLs
-- custom origins such as Azure Front Door
+- custom origins
+- Azure Front Door in front of storage
 
-## What to read next
+This package gives those concerns a cleaner home instead of leaving them as half-documented quirks.
 
-If you want the practical config mapping, go to [Migrate from matthewbdaly/laravel-azure-storage](../8-migration-guides/3-matthewbdaly-laravel-azure-storage.md).
+## The best rollout is usually the boring one
+
+Start with a connection string. Keep the disk name stable. Prove uploads, downloads, `Storage::url()`, and `Storage::temporaryUrl()` still behave the way your app expects.
+
+Then, once the migration is quiet in production, decide whether you want to modernize authentication.
+
+That pacing matters. A good migration is not the one with the biggest ambition. It is the one your team can safely ship.
+
+## Where to go next
+
+For the exact config mapping and rollout checklist, read [Migrate from matthewbdaly/laravel-azure-storage](../8-migration-guides/3-matthewbdaly-laravel-azure-storage.md).
