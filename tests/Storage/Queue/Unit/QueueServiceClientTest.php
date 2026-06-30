@@ -42,4 +42,15 @@ final class QueueServiceClientTest extends TestCase
 
         QueueServiceClient::fromConnectionString('DefaultEndpointsProtocol=https;AccountName=example');
     }
+
+    #[Test]
+    public function get_queue_client_appends_the_queue_name_and_reuses_the_service_credential(): void
+    {
+        $service = QueueServiceClient::fromConnectionString('UseDevelopmentStorage=true');
+
+        $queue = $service->getQueueClient('testing');
+
+        self::assertEquals($service->credential, $queue->credential);
+        self::assertSame('http://127.0.0.1:10001/devstoreaccount1/testing', (string) $queue->uri);
+    }
 }

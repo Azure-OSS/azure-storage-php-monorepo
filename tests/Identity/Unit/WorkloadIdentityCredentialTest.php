@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AzureOss\Tests\Identity\Functional;
+namespace AzureOss\Tests\Identity\Unit;
 
 use AzureOss\Identity\AuthenticationFailedException;
 use AzureOss\Identity\CredentialUnavailableException;
@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
-class WorkloadIdentityCredentialTest extends TestCase
+final class WorkloadIdentityCredentialTest extends TestCase
 {
     /** @var array<string, string|false> */
     private array $originalEnv = [];

@@ -45,11 +45,6 @@ final class AzureStorageQueueTest extends TestCase
         return $queue;
     }
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-    }
-
     protected function getPackageProviders($app): array
     {
         return [AzureStorageQueueServiceProvider::class];
