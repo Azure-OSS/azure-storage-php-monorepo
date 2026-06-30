@@ -505,6 +505,8 @@ final class BlobClientTest extends TestCase
 
         $stream = new class($file) implements StreamInterface
         {
+            private StreamInterface $stream;
+
             use StreamDecoratorTrait;
 
             public function detach()
@@ -547,6 +549,8 @@ final class BlobClientTest extends TestCase
 
         $stream = new class(new NoSeekStream($file)) implements StreamInterface
         {
+            private StreamInterface $stream;
+
             use StreamDecoratorTrait;
 
             public function detach()

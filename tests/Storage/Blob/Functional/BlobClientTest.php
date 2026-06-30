@@ -534,6 +534,8 @@ class BlobClientTest extends TestCase
 
         $stream = new class($file) implements StreamInterface
         {
+            private StreamInterface $stream;
+
             use StreamDecoratorTrait;
 
             public function getSize(): ?int
@@ -572,6 +574,8 @@ class BlobClientTest extends TestCase
 
         $stream = new class($file) implements StreamInterface
         {
+            private StreamInterface $stream;
+
             use StreamDecoratorTrait;
 
             public function getSize(): ?int
