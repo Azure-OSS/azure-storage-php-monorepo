@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AzureOss\Tests\Storage\QueueLaravel\Integration;
 
 use AzureOss\Storage\QueueLaravel\AzureStorageQueue;
+use AzureOss\Storage\QueueLaravel\AzureStorageQueueJob;
 use AzureOss\Storage\QueueLaravel\AzureStorageQueueServiceProvider;
 use AzureOss\Tests\Storage\CreatesTempQueues;
 use AzureOss\Tests\Storage\RetryableAssertions;
@@ -42,11 +43,6 @@ final class AzureStorageQueueTest extends TestCase
         $queue = $manager->connection($connectionName);
 
         return $queue;
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
     }
 
     protected function getPackageProviders($app): array
@@ -141,6 +137,59 @@ final class AzureStorageQueueTest extends TestCase
     }
 
     #[Test]
+    public function popped_jobs_expose_metadata_and_delete_marks_them_deleted(): void
+    {
+        $queueName = $this->tempQueue()->queueName;
+        $queue = $this->makeQueue($queueName, visibilityTimeout: 1);
+
+        $payload = json_encode(['hello' => 'world'], JSON_THROW_ON_ERROR);
+        $queue->pushRaw($payload, $queueName);
+
+        self::assertEventually(function () use ($queue, $queueName, $payload) {
+            $job = $queue->pop($queueName);
+            if ($job === null) {
+                return false;
+            }
+
+            self::assertSame($queueName, $job->getQueue());
+            self::assertSame($payload, $job->getRawBody());
+            self::assertNotSame('', $job->getJobId());
+            self::assertGreaterThanOrEqual(1, $job->attempts());
+            self::assertFalse($job->isDeleted());
+
+            $job->delete();
+
+            self::assertTrue($job->isDeleted());
+
+            return true;
+        }, maxAttempts: 10, delayMs: 200);
+    }
+
+    #[Test]
+    public function released_jobs_become_visible_again_and_increment_attempts(): void
+    {
+        $queueName = $this->tempQueue()->queueName;
+        $queue = $this->makeQueue($queueName, visibilityTimeout: 1);
+
+        $payload = json_encode(['hello' => 'world'], JSON_THROW_ON_ERROR);
+        $queue->pushRaw($payload, $queueName);
+
+        $job = $this->popEventually($queue, $queueName);
+        self::assertSame(1, $job->attempts());
+        self::assertFalse($job->isReleased());
+
+        $job->release(1);
+
+        self::assertTrue($job->isReleased());
+        self::assertNull($queue->pop($queueName));
+
+        $retriedJob = $this->popEventually($queue, $queueName);
+        self::assertSame($payload, $retriedJob->getRawBody());
+        self::assertGreaterThanOrEqual(2, $retriedJob->attempts());
+        $retriedJob->delete();
+    }
+
+    #[Test]
     public function push_raw_throws_on_invalid_options_types(): void
     {
         $queueName = $this->tempQueue()->queueName;
@@ -158,5 +207,19 @@ final class AzureStorageQueueTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $queue->bulk([123], queue: $queueName);
+    }
+
+    private function popEventually(AzureStorageQueue $queue, string $queueName): AzureStorageQueueJob
+    {
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $job = $queue->pop($queueName);
+            if ($job !== null) {
+                return $job;
+            }
+
+            usleep(200_000);
+        }
+
+        self::fail('Expected a job to become available.');
     }
 }

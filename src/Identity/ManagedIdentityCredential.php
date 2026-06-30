@@ -49,29 +49,15 @@ final class ManagedIdentityCredential implements TokenCredential
         $msiEndpoint = $this->getStringEnv('MSI_ENDPOINT');
         $msiSecret = $this->getStringEnv('MSI_SECRET');
 
-        $environment = $this->detectEnvironment($identityEndpoint, $identityHeader, $imdsEndpoint, $msiEndpoint);
-
-        if ($environment === 'app_service') {
-            if ($identityEndpoint === null || $identityHeader === null) {
-                throw new \LogicException('ManagedIdentityCredential environment detection error (app_service).');
-            }
-
+        if ($identityEndpoint !== null && $identityHeader !== null) {
             return $this->getTokenFromAppService($resource, $identityEndpoint, $identityHeader, $clientId);
         }
 
-        if ($environment === 'azure_arc') {
-            if ($identityEndpoint === null) {
-                throw new \LogicException('ManagedIdentityCredential environment detection error (azure_arc).');
-            }
-
+        if ($identityEndpoint !== null && $imdsEndpoint !== null) {
             return $this->getTokenFromAzureArc($resource, $identityEndpoint);
         }
 
-        if ($environment === 'legacy_msi') {
-            if ($msiEndpoint === null) {
-                throw new \LogicException('ManagedIdentityCredential environment detection error (legacy_msi).');
-            }
-
+        if ($msiEndpoint !== null) {
             return $this->getTokenFromMsiEndpoint($resource, $msiEndpoint, $msiSecret, $clientId);
         }
 
@@ -80,19 +66,11 @@ final class ManagedIdentityCredential implements TokenCredential
 
     private function getTokenFromImds(string $resource, ?string $clientId): AccessToken
     {
-        try {
-            $client = $this->options->httpClient ?? Psr18ClientDiscovery::find();
-            $requestFactory = $this->options->requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
-        } catch (NotFoundException $e) {
-            throw new \LogicException(
-                'Unable to discover a PSR-18 HTTP client and/or PSR-17 factories. '
-                .'Either provide TokenCredentialOptions::$httpClient/$requestFactory or install compatible implementations (e.g. guzzlehttp/guzzle + guzzlehttp/psr7).',
-                previous: $e,
-            );
-        }
+        [$client, $requestFactory] = $this->discoverClientAndRequestFactory();
+        $endpoint = $this->options->imdsEndpoint ?? self::IMDS_ENDPOINT;
 
         try {
-            $url = self::appendQuery(self::IMDS_ENDPOINT, array_filter([
+            $url = self::appendQuery($endpoint, array_filter([
                 'api-version' => self::IMDS_API_VERSION,
                 'resource' => $resource,
                 'client_id' => $clientId,
@@ -102,6 +80,8 @@ final class ManagedIdentityCredential implements TokenCredential
             $response = $client->sendRequest($request);
 
             return $this->handleImdsResponse($response);
+        } catch (CredentialUnavailableException|AuthenticationFailedException $e) {
+            throw $e;
         } catch (NetworkExceptionInterface $e) {
             throw new CredentialUnavailableException('Managed identity authentication unavailable. No response from the IMDS endpoint.', previous: $e);
         } catch (ClientExceptionInterface $e) {
@@ -315,23 +295,6 @@ final class ManagedIdentityCredential implements TokenCredential
         }
 
         return $scope;
-    }
-
-    private function detectEnvironment(?string $identityEndpoint, ?string $identityHeader, ?string $imdsEndpoint, ?string $msiEndpoint): string
-    {
-        if ($identityEndpoint !== null && $identityHeader !== null) {
-            return 'app_service';
-        }
-
-        if ($identityEndpoint !== null && $imdsEndpoint !== null) {
-            return 'azure_arc';
-        }
-
-        if ($msiEndpoint !== null) {
-            return 'legacy_msi';
-        }
-
-        return 'imds';
     }
 
     private function parseWwwAuthenticateBasicRealm(string $header): ?string

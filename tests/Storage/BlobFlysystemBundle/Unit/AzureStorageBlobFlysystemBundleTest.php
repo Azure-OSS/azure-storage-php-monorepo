@@ -12,6 +12,7 @@ use League\FlysystemBundle\FlysystemBundle;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\Extension;
 
 final class AzureStorageBlobFlysystemBundleTest extends TestCase
 {
@@ -64,5 +65,28 @@ final class AzureStorageBlobFlysystemBundleTest extends TestCase
         }
 
         return $builders;
+    }
+
+    public function test_build_ignores_non_flysystem_extensions_with_the_same_alias(): void
+    {
+        $container = new ContainerBuilder;
+        $container->registerExtension(new class extends Extension
+        {
+            public function load(array $configs, ContainerBuilder $container): void {}
+
+            public function getAlias(): string
+            {
+                return 'flysystem';
+            }
+        });
+
+        $bundle = new AzureStorageBlobFlysystemBundle;
+
+        $bundle->build($container);
+
+        self::assertInstanceOf(
+            Extension::class,
+            $container->getExtension('flysystem'),
+        );
     }
 }

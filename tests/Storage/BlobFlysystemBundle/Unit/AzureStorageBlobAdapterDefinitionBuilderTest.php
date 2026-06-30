@@ -8,6 +8,7 @@ use AzureOss\Storage\Blob\BlobContainerClient;
 use AzureOss\Storage\BlobFlysystem\AzureBlobStorageAdapter;
 use AzureOss\Storage\BlobFlysystemBundle\AzureStorageBlobAdapterDefinitionBuilder;
 use League\FlysystemBundle\Test\AbstractAdapterDefinitionBuilderTest;
+use Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 
@@ -135,5 +136,115 @@ final class AzureStorageBlobAdapterDefinitionBuilderTest extends AbstractAdapter
         );
 
         self::assertNull($container->getDefinition($adapterId)->getArgument(2));
+    }
+
+    public function test_add_configuration_requires_an_array_node_definition(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Expected ArrayNodeDefinition');
+
+        $this->createBuilder()->addConfiguration(new ScalarNodeDefinition('azure_oss'));
+    }
+
+    public function test_create_adapter_uses_default_optional_values(): void
+    {
+        $builder = $this->createBuilder();
+        $container = $this->getContainer();
+
+        $adapterId = $builder->createAdapter(
+            $container,
+            'defaulted',
+            [
+                'client' => 'my_client',
+                'container' => 'my-container',
+            ],
+            null,
+        );
+
+        $definition = $container->getDefinition($adapterId);
+
+        self::assertSame('', $definition->getArgument(1));
+        self::assertNull($definition->getArgument(2));
+        self::assertSame(
+            AzureBlobStorageAdapter::ON_VISIBILITY_THROW_ERROR,
+            $definition->getArgument(3),
+        );
+        self::assertFalse($definition->getArgument(4));
+    }
+
+    public function test_create_adapter_requires_client_to_be_a_string(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'Option "client" for azure_oss adapter must be a string.',
+        );
+
+        $this->createBuilder()->createAdapter(
+            $this->getContainer(),
+            'invalid',
+            [
+                'client' => true,
+                'container' => 'my-container',
+            ],
+            null,
+        );
+    }
+
+    public function test_create_adapter_requires_container_option(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'Missing required "container" option for azure_oss adapter.',
+        );
+
+        $this->createBuilder()->createAdapter(
+            $this->getContainer(),
+            'invalid',
+            [
+                'client' => 'my_client',
+            ],
+            null,
+        );
+    }
+
+    public function test_create_adapter_rejects_invalid_optional_option_types(): void
+    {
+        try {
+            $this->createBuilder()->createAdapter(
+                $this->getContainer(),
+                'invalid-prefix',
+                [
+                    'client' => 'my_client',
+                    'container' => 'my-container',
+                    'prefix' => false,
+                ],
+                null,
+            );
+            self::fail('Expected invalid prefix type to fail.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertSame(
+                'Option "prefix" for azure_oss adapter must be a string or null.',
+                $exception->getMessage(),
+            );
+        }
+
+        try {
+            $this->createBuilder()->createAdapter(
+                $this->getContainer(),
+                'invalid-public',
+                [
+                    'client' => 'my_client',
+                    'container' => 'my-container',
+                    'public_container' => 'yes',
+                ],
+                null,
+            );
+            self::fail('Expected invalid public_container type to fail.');
+        } catch (\InvalidArgumentException $exception) {
+            self::assertSame(
+                'Option "public_container" for azure_oss adapter must be a boolean.',
+                $exception->getMessage(),
+            );
+        }
     }
 }

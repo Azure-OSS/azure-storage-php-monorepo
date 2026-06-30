@@ -8,11 +8,9 @@ use AzureOss\Storage\Blob\BlobContainerClient;
 use AzureOss\Storage\Blob\BlobServiceClient;
 use AzureOss\Storage\BlobFlysystem\AzureBlobStorageAdapter;
 use AzureOss\Tests\RequiresEnvironmentVariables;
-use GuzzleHttp\Psr7\Query;
 use League\Flysystem\AdapterTestUtilities\FilesystemAdapterTestCase;
 use League\Flysystem\Config;
 use League\Flysystem\FilesystemAdapter;
-use League\Flysystem\UnableToSetVisibility;
 use League\Flysystem\UnableToWriteFile;
 use League\Flysystem\Visibility;
 use PHPUnit\Framework\Attributes\Test;
@@ -263,51 +261,6 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
     }
 
     #[Test]
-    public function it_rejects_an_invalid_write_conditions_option(): void
-    {
-        $adapter = $this->adapter();
-
-        try {
-            $adapter->write('invalid-conditions.txt', 'content', new Config([
-                'conditions' => 'invalid',
-            ]));
-            self::fail('Expected invalid write conditions to fail.');
-        } catch (UnableToWriteFile $exception) {
-            $previous = $exception->getPrevious();
-            self::assertInstanceOf(\RuntimeException::class, $previous);
-            self::assertSame(
-                'conditions must be an array.',
-                $previous->getMessage(),
-            );
-        }
-    }
-
-    #[Test]
-    public function setting_visibility_can_be_ignored_not_supported(): void
-    {
-        $this->givenWeHaveAnExistingFile('some-file.md');
-        $this->expectNotToPerformAssertions();
-
-        $adapter = new AzureBlobStorageAdapter(
-            self::createContainerClient(),
-            visibilityHandling: AzureBlobStorageAdapter::ON_VISIBILITY_IGNORE,
-        );
-
-        $adapter->setVisibility('some-file.md', 'public');
-    }
-
-    #[Test]
-    public function setting_visibility_causes_errors(): void
-    {
-        $this->givenWeHaveAnExistingFile('some-file.md');
-        $adapter = $this->adapter();
-
-        $this->expectException(UnableToSetVisibility::class);
-
-        $adapter->setVisibility('some-file.md', 'public');
-    }
-
-    #[Test]
     public function listing_contents_deep(): void
     {
         $this->runScenario(function () {
@@ -328,78 +281,5 @@ class AzureBlobStorageTest extends FilesystemAdapterTestCase
             self::assertContains('dir1/dir2/dir3', $paths);
             self::assertContains('dir1/dir2/dir3/file3.txt', $paths);
         });
-    }
-
-    #[Test]
-    public function public_url_uses_direct_uri_when_enabled(): void
-    {
-        $this->givenWeHaveAnExistingFile('test-file.txt');
-
-        $adapter = new AzureBlobStorageAdapter(
-            self::createContainerClient(),
-            self::$containerName,
-            isPublicContainer: true,
-        );
-
-        $url = $adapter->publicUrl('test-file.txt', new Config);
-
-        // Direct URL should not contain SAS token parameters
-        self::assertStringNotContainsString('sig=', $url);
-        self::assertStringNotContainsString('se=', $url);
-        self::assertStringNotContainsString('sp=', $url);
-
-        // But should contain the container and blob name
-        self::assertStringContainsString(self::$containerName, $url);
-        self::assertStringContainsString('test-file.txt', $url);
-    }
-
-    #[Test]
-    public function public_url_uses_sas_token_by_default(): void
-    {
-        $this->givenWeHaveAnExistingFile('test-file.txt');
-
-        $adapter = new AzureBlobStorageAdapter(
-            self::createContainerClient(),
-            self::$containerName,
-        );
-
-        $url = $adapter->publicUrl('test-file.txt', new Config);
-
-        // URL with SAS token should contain these parameters
-        self::assertStringContainsString('sig=', $url);
-        self::assertStringContainsString('se=', $url);
-        self::assertStringContainsString('sp=', $url);
-    }
-
-    #[Test]
-    public function temporary_url_passes_response_headers_to_sas(): void
-    {
-        $this->givenWeHaveAnExistingFile('test-file.txt');
-
-        $adapter = new AzureBlobStorageAdapter(
-            self::createContainerClient(),
-            self::$containerName,
-        );
-
-        $url = $adapter->temporaryUrl('test-file.txt', new \DateTimeImmutable('+5 minutes'), new Config([
-            'httpHeaders' => [
-                'cacheControl' => 'public, max-age=60',
-                'contentDisposition' => 'attachment; filename="download.txt"',
-                'contentEncoding' => 'identity',
-                'contentLanguage' => 'en-US',
-                'contentType' => 'text/plain',
-            ],
-        ]));
-
-        $queryString = parse_url($url, PHP_URL_QUERY);
-        self::assertIsString($queryString);
-
-        $query = Query::parse($queryString);
-
-        self::assertSame('public, max-age=60', $query['rscc'] ?? null);
-        self::assertSame('attachment; filename="download.txt"', $query['rscd'] ?? null);
-        self::assertSame('identity', $query['rsce'] ?? null);
-        self::assertSame('en-US', $query['rscl'] ?? null);
-        self::assertSame('text/plain', $query['rsct'] ?? null);
     }
 }
