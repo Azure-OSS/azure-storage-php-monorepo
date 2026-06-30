@@ -6,3 +6,4 @@
 /.phpdoc
 /phpunit.local.xml
 /docs/static/api
+**/.DS_Store
