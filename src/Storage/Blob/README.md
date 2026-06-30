@@ -85,6 +85,11 @@ $blob->deleteIfExists();
 
 You can read the documentation [here](https://php-oss-for-azure.github.io).
 
+## Migration Guide
+
+Migrating from `microsoft/azure-storage-blob`?
+[Migrate from microsoft/azure-storage-blob](https://php-oss-for-azure.github.io/storage-blob/migrate-from-microsoft-azure-storage-blob).
+
 ## Related packages
 
 - **[azure-oss/storage](https://packagist.org/packages/azure-oss/storage)** — Meta package for the Storage SDKs

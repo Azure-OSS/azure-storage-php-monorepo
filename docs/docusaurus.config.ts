@@ -46,7 +46,10 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
         },
-        blog: false,
+        blog: {
+          path: './blog',
+          routeBasePath: 'blog',
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -65,11 +68,19 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
-        // The API reference is a static phpDocumentor site, not a Docusaurus route.
-        // A raw anchor keeps the link local without triggering route validation.
+        {
+          to: '/',
+          label: 'Docs',
+          position: 'left',
+        },
         {
           type: 'html',
-          value: `<a class="navbar__link menu__link" href="${apiReferencePath}">PHP API Reference</a>`,
+          value: `<a class="navbar__link menu__link" href="${apiReferencePath}">API</a>`,
+          position: 'left',
+        },
+        {
+          to: '/blog',
+          label: 'Blog',
           position: 'left',
         },
         {

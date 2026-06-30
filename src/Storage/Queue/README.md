@@ -61,6 +61,11 @@ $queue->deleteIfExists();
 
 You can read the documentation [here](https://php-oss-for-azure.github.io).
 
+## Migration Guide
+
+Migrating from `microsoft/azure-storage-queue`?
+[Migrate from microsoft/azure-storage-queue](https://php-oss-for-azure.github.io/storage-queue/migrate-from-microsoft-azure-storage-queue).
+
 ## Related packages
 
 - **[azure-oss/storage](https://packagist.org/packages/azure-oss/storage)** — Meta package for the Storage SDKs

@@ -37,6 +37,11 @@ This connector supports shared key and SAS-based authentication via `connection_
 
 You can read the documentation [here](https://php-oss-for-azure.github.io/category/storage-queue-laravel).
 
+## Migration Guide
+
+Migrating from `squigg/azure-queue-laravel`?
+[Migrate from squigg/azure-queue-laravel](https://php-oss-for-azure.github.io/storage-queue-laravel/migrate-from-squigg-azure-queue-laravel).
+
 ## Related packages
 
 - **[azure-oss/storage](https://packagist.org/packages/azure-oss/storage)** — Meta package for the Storage SDKs

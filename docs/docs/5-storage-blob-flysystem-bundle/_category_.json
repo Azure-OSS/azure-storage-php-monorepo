@@ -1,5 +1,5 @@
 {
-  "label": "Storage Blob Flysystem Bundle",
+  "label": "Storage Blob Flysystem Bundle (Symfony)",
   "position": 5,
   "link": {
     "type": "generated-index",
